@@ -15,7 +15,7 @@
 #include <QLineEdit>
 #include <QStackedWidget>
 #include <QSpinBox>
-
+#include <QComboBox>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -29,6 +29,8 @@ public:
     ~MainWindow();
 
 private slots:
+    void trierCours();
+    void trierFormateurs();
     // ========================================
     // NAVIGATION
     // ========================================
@@ -68,7 +70,12 @@ private:
     // Sidebar
     QListWidget *sidebar;
     QStackedWidget *stackedWidget;
-
+    // Tri Formateurs
+    QComboBox *comboTriFormateurs;
+    QPushButton *btnTrierFormateurs;
+    // Tri Cours
+    QComboBox *comboTriCours;
+    QPushButton *btnTrierCours;
     // ========================================
     // ONGLET FORMATEURS
     // ========================================

@@ -248,6 +248,32 @@ void MainWindow::setupUI()
     connect(btnRechercher, &QPushButton::clicked, this, &MainWindow::rechercherFormateurs);
     connect(btnReinitialiser, &QPushButton::clicked, this, &MainWindow::reinitialiserRecherche);
 
+    // ========================================================
+    // TRI MULTICRITÈRES FORMATEURS
+    // ========================================================
+
+    QHBoxLayout *triFormateursLayout = new QHBoxLayout();
+    triFormateursLayout->setSpacing(10);
+
+    QLabel *labelTriFormateurs = new QLabel("Trier par :");
+    comboTriFormateurs = new QComboBox();
+    comboTriFormateurs->addItem("ID");
+    comboTriFormateurs->addItem("Nom");
+    comboTriFormateurs->addItem("Prénom");
+    comboTriFormateurs->addItem("Spécialité");
+    comboTriFormateurs->addItem("Date d'embauche");
+
+    btnTrierFormateurs = creerBouton("🔽 Trier", "primary");
+
+    triFormateursLayout->addWidget(labelTriFormateurs);
+    triFormateursLayout->addWidget(comboTriFormateurs);
+    triFormateursLayout->addWidget(btnTrierFormateurs);
+    triFormateursLayout->addStretch();
+
+    layoutFormateurs->addLayout(triFormateursLayout);
+
+    connect(btnTrierFormateurs, &QPushButton::clicked, this, &MainWindow::trierFormateurs);
+
     // Tableau Formateurs
     modelFormateurs = new QStandardItemModel(this);
     modelFormateurs->setHorizontalHeaderLabels({"ID", "Nom", "Prénom", "Email", "Spécialité", "Date d'embauche"});
@@ -304,7 +330,7 @@ void MainWindow::setupUI()
     layoutCours->addLayout(statsCours);
 
     // ========================================================
-    // BARRE DE RECHERCHE COURS (simplifiée)
+    // BARRE DE RECHERCHE COURS
     // ========================================================
 
     QHBoxLayout *rechercheCoursLayout = new QHBoxLayout();
@@ -344,6 +370,33 @@ void MainWindow::setupUI()
 
     connect(btnRechercherCours, &QPushButton::clicked, this, &MainWindow::rechercherCours);
     connect(btnReinitialiserCours, &QPushButton::clicked, this, &MainWindow::reinitialiserRechercheCours);
+
+    // ========================================================
+    // TRI MULTICRITÈRES COURS (PLACÉ ICI, APRÈS layoutCours)
+    // ========================================================
+
+    QHBoxLayout *triCoursLayout = new QHBoxLayout();
+    triCoursLayout->setSpacing(10);
+
+    QLabel *labelTriCours = new QLabel("Trier par :");
+    comboTriCours = new QComboBox();
+    comboTriCours->addItem("ID");
+    comboTriCours->addItem("Titre");
+    comboTriCours->addItem("Description");
+    comboTriCours->addItem("Durée (h)");
+    comboTriCours->addItem("Formateur");
+
+    btnTrierCours = creerBouton("🔽 Trier", "primary");
+
+    triCoursLayout->addWidget(labelTriCours);
+    triCoursLayout->addWidget(comboTriCours);
+    triCoursLayout->addWidget(btnTrierCours);
+    triCoursLayout->addStretch();
+
+    layoutCours->addLayout(triCoursLayout);
+
+    connect(btnTrierCours, &QPushButton::clicked, this, &MainWindow::trierCours);
+
     // Tableau Cours
     modelCours = new QStandardItemModel(this);
     modelCours->setHorizontalHeaderLabels({"ID", "Titre", "Description", "Durée (h)", "Formateur"});
@@ -645,6 +698,7 @@ void MainWindow::chargerFormateurs()
 
         modelFormateurs->appendRow(row);
     }
+    modelFormateurs->sort(-1); // Réinitialiser le tri
 }
 // ============================================================
 // CHARGEMENT COURS
@@ -692,6 +746,7 @@ void MainWindow::chargerCours()
 
         modelCours->appendRow(row);
     }
+    modelCours->sort(-1); // Réinitialiser le tri
 }
 // ============================================================
 // SLOTS FORMATEURS (COMPLETS)
@@ -1022,4 +1077,36 @@ void MainWindow::reinitialiserRechercheCours()
 
     QMessageBox::information(this, "Réinitialisation",
                              "✅ Liste complète des cours affichée.");
+}
+// ============================================================
+// TRI FORMATEURS
+// ============================================================
+
+void MainWindow::trierFormateurs()
+{
+    int colonne = comboTriFormateurs->currentIndex();
+    Qt::SortOrder ordre = Qt::AscendingOrder;
+
+    // Appliquer le tri sur le modèle
+    modelFormateurs->sort(colonne, ordre);
+
+    QMessageBox::information(this, "Tri",
+                             QString("✅ Tri effectué par : %1")
+                                 .arg(comboTriFormateurs->currentText()));
+}
+// ============================================================
+// TRI COURS
+// ============================================================
+
+void MainWindow::trierCours()
+{
+    int colonne = comboTriCours->currentIndex();
+    Qt::SortOrder ordre = Qt::AscendingOrder;
+
+    // Appliquer le tri sur le modèle
+    modelCours->sort(colonne, ordre);
+
+    QMessageBox::information(this, "Tri",
+                             QString("✅ Tri effectué par : %1")
+                                 .arg(comboTriCours->currentText()));
 }
