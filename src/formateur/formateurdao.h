@@ -13,6 +13,7 @@ public:
     static bool remove(int id);
     static Formateur readById(int id);
     static bool emailExiste(const QString& email);
+    static QList<Formateur> search(const QString& nom, const QString& prenom, const QString& specialite);
 };
 
 #endif // FORMATEURDAO_H

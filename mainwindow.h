@@ -12,7 +12,9 @@
 #include <QLabel>
 #include <QFrame>
 #include <QListWidget>
+#include <QLineEdit>
 #include <QStackedWidget>
+#include <QSpinBox>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -27,17 +29,38 @@ public:
     ~MainWindow();
 
 private slots:
+    // ========================================
+    // NAVIGATION
+    // ========================================
     void changerPage(int index);
 
+    // ========================================
+    // FORMATEURS
+    // ========================================
     void ajouterFormateur();
     void modifierFormateur();
     void supprimerFormateur();
     void actualiserFormateurs();
 
+    // ========================================
+    // COURS
+    // ========================================
     void ajouterCours();
     void modifierCours();
     void supprimerCours();
     void actualiserCours();
+
+    // ========================================
+    // RECHERCHE FORMATEURS
+    // ========================================
+    void rechercherFormateurs();
+    void reinitialiserRecherche();
+
+    // ========================================
+    // RECHERCHE COURS
+    // ========================================
+    void rechercherCours();
+    void reinitialiserRechercheCours();
 
 private:
     Ui::MainWindow *ui;
@@ -46,7 +69,9 @@ private:
     QListWidget *sidebar;
     QStackedWidget *stackedWidget;
 
-    // Onglet Formateurs
+    // ========================================
+    // ONGLET FORMATEURS
+    // ========================================
     QWidget *pageFormateurs;
     QTableView *tableFormateurs;
     QStandardItemModel *modelFormateurs;
@@ -56,7 +81,16 @@ private:
     QPushButton *btnActualiserFormateurs;
     QLabel *cardTotalFormateurs;
 
-    // Onglet Cours
+    // Champs de recherche Formateurs
+    QLineEdit *searchNom;
+    QLineEdit *searchPrenom;
+    QLineEdit *searchSpecialite;
+    QPushButton *btnRechercher;
+    QPushButton *btnReinitialiser;
+
+    // ========================================
+    // ONGLET COURS
+    // ========================================
     QWidget *pageCours;
     QTableView *tableCours;
     QStandardItemModel *modelCours;
@@ -66,6 +100,16 @@ private:
     QPushButton *btnActualiserCours;
     QLabel *cardTotalCours;
 
+    // Champs de recherche Cours
+    QLineEdit *searchTitre;
+    QLineEdit *searchDescription;
+    QSpinBox *spinDuree;
+    QPushButton *btnRechercherCours;
+    QPushButton *btnReinitialiserCours;
+
+    // ========================================
+    // MÉTHODES
+    // ========================================
     void setupUI();
     void chargerFormateurs();
     void chargerCours();

@@ -4,6 +4,18 @@
 #include <QSqlError>
 #include <QDebug>
 
+bool CoursDAO::titreExiste(const QString& titre, int idCoursExclu)
+{
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM COURS WHERE titre = :titre AND id_cours != :id");
+    query.bindValue(":titre", titre);
+    query.bindValue(":id", idCoursExclu);
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt() > 0;
+    }
+    return false;
+}
 bool CoursDAO::create(const Cours& cours)
 {
     QSqlQuery query;
@@ -89,54 +101,58 @@ Cours CoursDAO::readById(int id)
     return Cours();
 }
 
-// Métiers avancés
-QList<Cours> CoursDAO::search(const QString& titre, const QString& description, int dureeMin, int dureeMax)
+QList<Cours> CoursDAO::search(const QString& titre, const QString& description, int duree)
 {
-    QList<Cours> coursList;
-    QSqlQuery query;
-    query.prepare("SELECT * FROM COURS WHERE titre LIKE :titre "
-                  "AND description LIKE :description "
-                  "AND duree_heures BETWEEN :dureeMin AND :dureeMax");
-    query.bindValue(":titre", "%" + titre + "%");
-    query.bindValue(":description", "%" + description + "%");
-    query.bindValue(":dureeMin", dureeMin);
-    query.bindValue(":dureeMax", dureeMax);
+    QList<Cours> resultats;
 
-    if (query.exec()) {
-        while (query.next()) {
-            Cours c(
-                query.value("id_cours").toInt(),
-                query.value("titre").toString(),
-                query.value("description").toString(),
-                query.value("duree_heures").toInt(),
-                query.value("id_formateur").toInt()
-                );
-            coursList.append(c);
-        }
-    } else {
+    QString queryStr = R"(
+        SELECT c.id_cours, c.titre, c.description, c.duree_heures, c.id_formateur,
+               f.nom || ' ' || f.prenom AS formateur_nom
+        FROM COURS c
+        JOIN FORMATEUR f ON c.id_formateur = f.id_formateur
+        WHERE 1=1
+    )";
+
+    if (!titre.isEmpty()) {
+        queryStr += " AND UPPER(c.titre) LIKE UPPER(:titre)";
+    }
+    if (!description.isEmpty()) {
+        queryStr += " AND UPPER(c.description) LIKE UPPER(:description)";
+    }
+    if (duree > 0) {
+        queryStr += " AND c.duree_heures = :duree";
+    }
+
+    queryStr += " ORDER BY c.id_cours";
+
+    QSqlQuery query;
+    query.prepare(queryStr);
+
+    if (!titre.isEmpty()) {
+        query.bindValue(":titre", "%" + titre + "%");
+    }
+    if (!description.isEmpty()) {
+        query.bindValue(":description", "%" + description + "%");
+    }
+    if (duree > 0) {
+        query.bindValue(":duree", duree);
+    }
+
+    if (!query.exec()) {
         qDebug() << "❌ Erreur recherche cours :" << query.lastError().text();
+        return resultats;
     }
-    return coursList;
-}
 
-QList<Cours> CoursDAO::getCoursByFormateur(int idFormateur)
-{
-    QList<Cours> coursList;
-    QSqlQuery query;
-    query.prepare("SELECT * FROM COURS WHERE id_formateur = :id_formateur");
-    query.bindValue(":id_formateur", idFormateur);
-
-    if (query.exec()) {
-        while (query.next()) {
-            Cours c(
-                query.value("id_cours").toInt(),
-                query.value("titre").toString(),
-                query.value("description").toString(),
-                query.value("duree_heures").toInt(),
-                query.value("id_formateur").toInt()
-                );
-            coursList.append(c);
-        }
+    while (query.next()) {
+        Cours c(
+            query.value("id_cours").toInt(),
+            query.value("titre").toString(),
+            query.value("description").toString(),
+            query.value("duree_heures").toInt(),
+            query.value("id_formateur").toInt()
+            );
+        resultats.append(c);
     }
-    return coursList;
+
+    return resultats;
 }

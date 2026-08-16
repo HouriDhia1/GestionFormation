@@ -12,8 +12,10 @@ public:
     static bool update(const Cours& cours);
     static bool remove(int id);
     static Cours readById(int id);
+    static bool titreExiste(const QString& titre, int idCoursExclu = -1);
 
-    static QList<Cours> search(const QString& titre, const QString& description, int dureeMin, int dureeMax);
+    // 🔍 RECHERCHE MULTICRITÈRES (UNE SEULE FOIS !)
+static QList<Cours> search(const QString& titre, const QString& description, int duree);
     static QList<Cours> getCoursByFormateur(int idFormateur);
 };
 

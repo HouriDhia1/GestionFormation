@@ -8,6 +8,8 @@ INCLUDEPATH += $$PWD/src
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
+    src/cours/ajoutercoursdialog.cpp \
+    src/cours/modifiercoursdialog.cpp \
     src/database.cpp \
     src/formateur/ajouterformateurdialog.cpp \
     src/formateur/formateur.cpp \
@@ -19,6 +21,8 @@ SOURCES += \
 # ========== HEADERS ==========
 HEADERS += \
     mainwindow.h \
+    src/cours/ajoutercoursdialog.h \
+    src/cours/modifiercoursdialog.h \
     src/database.h \
     src/formateur/ajouterformateurdialog.h \
     src/formateur/formateur.h \

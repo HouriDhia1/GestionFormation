@@ -102,3 +102,58 @@ Formateur FormateurDAO::readById(int id)
     }
     return Formateur();
 }
+// ============================================================
+// RECHERCHE MULTICRITÈRES
+// ============================================================
+
+QList<Formateur> FormateurDAO::search(const QString& nom, const QString& prenom, const QString& specialite)
+{
+    QList<Formateur> resultats;
+
+    // Construction de la requête dynamique
+    QString queryStr = "SELECT * FROM FORMATEUR WHERE 1=1";
+
+    if (!nom.isEmpty()) {
+        queryStr += " AND UPPER(nom) LIKE UPPER(:nom)";
+    }
+    if (!prenom.isEmpty()) {
+        queryStr += " AND UPPER(prenom) LIKE UPPER(:prenom)";
+    }
+    if (!specialite.isEmpty()) {
+        queryStr += " AND UPPER(specialite) LIKE UPPER(:specialite)";
+    }
+
+    queryStr += " ORDER BY id_formateur";
+
+    QSqlQuery query;
+    query.prepare(queryStr);
+
+    if (!nom.isEmpty()) {
+        query.bindValue(":nom", "%" + nom + "%");
+    }
+    if (!prenom.isEmpty()) {
+        query.bindValue(":prenom", "%" + prenom + "%");
+    }
+    if (!specialite.isEmpty()) {
+        query.bindValue(":specialite", "%" + specialite + "%");
+    }
+
+    if (!query.exec()) {
+        qDebug() << "❌ Erreur recherche formateurs :" << query.lastError().text();
+        return resultats;
+    }
+
+    while (query.next()) {
+        Formateur f(
+            query.value("id_formateur").toInt(),
+            query.value("nom").toString(),
+            query.value("prenom").toString(),
+            query.value("email").toString(),
+            query.value("specialite").toString(),
+            query.value("date_embauche").toDate()
+            );
+        resultats.append(f);
+    }
+
+    return resultats;
+}

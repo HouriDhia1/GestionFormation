@@ -17,6 +17,10 @@
 #include <QSpacerItem>
 #include <QModelIndexList>
 #include "src/formateur/modifierformateurdialog.h"
+#include "src/cours/ajoutercoursdialog.h"
+#include "src/cours/modifiercoursdialog.h"
+#include <QSqlQuery>
+#include <QSqlError>
 // ============================================================
 // CONSTRUCTEUR
 // ============================================================
@@ -107,7 +111,6 @@ void MainWindow::setupUI()
     sidebarLayout->setContentsMargins(20, 30, 20, 30);
     sidebarLayout->setSpacing(20);
 
-    // Logo / Titre
     QLabel *logo = new QLabel("🏢 Formation Center");
     logo->setStyleSheet(R"(
         QLabel {
@@ -119,7 +122,6 @@ void MainWindow::setupUI()
     )");
     sidebarLayout->addWidget(logo);
 
-    // Menu sidebar
     sidebar = new QListWidget();
     sidebar->setStyleSheet(R"(
         QListWidget {
@@ -156,13 +158,16 @@ void MainWindow::setupUI()
     mainLayout->addWidget(sidebarFrame);
 
     // ========================================================
-    // STACKED WIDGET (CONTENU PRINCIPAL)
+    // STACKED WIDGET
     // ========================================================
 
     stackedWidget = new QStackedWidget();
     stackedWidget->setStyleSheet("background-color: #F0F2F5;");
 
-    // ----- PAGE 1 : Tableau de bord -----
+    // ============================================================
+    // PAGE 1 : TABLEAU DE BORD
+    // ============================================================
+
     QWidget *pageDashboard = new QWidget();
     QVBoxLayout *dashboardLayout = new QVBoxLayout(pageDashboard);
     dashboardLayout->setContentsMargins(30, 30, 30, 30);
@@ -171,20 +176,20 @@ void MainWindow::setupUI()
     dashboardTitle->setStyleSheet("font-size: 28px; font-weight: 700; color: #1A2332;");
     dashboardLayout->addWidget(dashboardTitle);
 
-    // Cartes
     QHBoxLayout *cardsLayout = new QHBoxLayout();
     cardsLayout->setSpacing(20);
-
     cardsLayout->addWidget(creerCard("👨‍🏫", "Total Formateurs", "0", "white"));
     cardsLayout->addWidget(creerCard("📚", "Total Cours", "0", "white"));
     cardsLayout->addWidget(creerCard("🟢", "État du système", "Connecté", "#E8F8F0"));
-
     dashboardLayout->addLayout(cardsLayout);
     dashboardLayout->addStretch();
 
     stackedWidget->addWidget(pageDashboard);
 
-    // ----- PAGE 2 : Formateurs -----
+    // ============================================================
+    // PAGE 2 : FORMATEURS
+    // ============================================================
+
     pageFormateurs = new QWidget();
     QVBoxLayout *layoutFormateurs = new QVBoxLayout(pageFormateurs);
     layoutFormateurs->setContentsMargins(30, 30, 30, 30);
@@ -194,7 +199,7 @@ void MainWindow::setupUI()
     titreFormateurs->setStyleSheet("font-size: 24px; font-weight: 700; color: #1A2332;");
     layoutFormateurs->addWidget(titreFormateurs);
 
-    // Cartes stats
+    // Cartes stats Formateurs
     QHBoxLayout *statsFormateurs = new QHBoxLayout();
     statsFormateurs->setSpacing(15);
     statsFormateurs->addWidget(creerCard("👨‍🏫", "Total", "0", "white"));
@@ -203,7 +208,47 @@ void MainWindow::setupUI()
     statsFormateurs->addStretch();
     layoutFormateurs->addLayout(statsFormateurs);
 
-    // Tableau
+    // ========================================================
+    // BARRE DE RECHERCHE FORMATEURS
+    // ========================================================
+
+    QHBoxLayout *rechercheLayout = new QHBoxLayout();
+    rechercheLayout->setSpacing(10);
+
+    QLabel *labelNom = new QLabel("Nom :");
+    searchNom = new QLineEdit();
+    searchNom->setPlaceholderText("Rechercher par nom...");
+    searchNom->setMinimumWidth(150);
+
+    QLabel *labelPrenom = new QLabel("Prénom :");
+    searchPrenom = new QLineEdit();
+    searchPrenom->setPlaceholderText("Rechercher par prénom...");
+    searchPrenom->setMinimumWidth(150);
+
+    QLabel *labelSpecialite = new QLabel("Spécialité :");
+    searchSpecialite = new QLineEdit();
+    searchSpecialite->setPlaceholderText("Rechercher par spécialité...");
+    searchSpecialite->setMinimumWidth(150);
+
+    btnRechercher = creerBouton("🔍 Rechercher", "primary");
+    btnReinitialiser = creerBouton("🔄 Réinitialiser", "secondary");
+
+    rechercheLayout->addWidget(labelNom);
+    rechercheLayout->addWidget(searchNom);
+    rechercheLayout->addWidget(labelPrenom);
+    rechercheLayout->addWidget(searchPrenom);
+    rechercheLayout->addWidget(labelSpecialite);
+    rechercheLayout->addWidget(searchSpecialite);
+    rechercheLayout->addWidget(btnRechercher);
+    rechercheLayout->addWidget(btnReinitialiser);
+    rechercheLayout->addStretch();
+
+    layoutFormateurs->addLayout(rechercheLayout);
+
+    connect(btnRechercher, &QPushButton::clicked, this, &MainWindow::rechercherFormateurs);
+    connect(btnReinitialiser, &QPushButton::clicked, this, &MainWindow::reinitialiserRecherche);
+
+    // Tableau Formateurs
     modelFormateurs = new QStandardItemModel(this);
     modelFormateurs->setHorizontalHeaderLabels({"ID", "Nom", "Prénom", "Email", "Spécialité", "Date d'embauche"});
 
@@ -212,7 +257,7 @@ void MainWindow::setupUI()
     styliserTable(tableFormateurs);
     layoutFormateurs->addWidget(tableFormateurs, 1);
 
-    // Boutons
+    // Boutons Formateurs
     QHBoxLayout *buttonsFormateurs = new QHBoxLayout();
     buttonsFormateurs->setSpacing(10);
 
@@ -236,7 +281,10 @@ void MainWindow::setupUI()
 
     stackedWidget->addWidget(pageFormateurs);
 
-    // ----- PAGE 3 : Cours -----
+    // ============================================================
+    // PAGE 3 : COURS
+    // ============================================================
+
     pageCours = new QWidget();
     QVBoxLayout *layoutCours = new QVBoxLayout(pageCours);
     layoutCours->setContentsMargins(30, 30, 30, 30);
@@ -246,7 +294,7 @@ void MainWindow::setupUI()
     titreCours->setStyleSheet("font-size: 24px; font-weight: 700; color: #1A2332;");
     layoutCours->addWidget(titreCours);
 
-    // Cartes stats
+    // Cartes stats Cours
     QHBoxLayout *statsCours = new QHBoxLayout();
     statsCours->setSpacing(15);
     statsCours->addWidget(creerCard("📚", "Total", "0", "white"));
@@ -255,7 +303,48 @@ void MainWindow::setupUI()
     statsCours->addStretch();
     layoutCours->addLayout(statsCours);
 
-    // Tableau
+    // ========================================================
+    // BARRE DE RECHERCHE COURS (simplifiée)
+    // ========================================================
+
+    QHBoxLayout *rechercheCoursLayout = new QHBoxLayout();
+    rechercheCoursLayout->setSpacing(10);
+
+    QLabel *labelTitre = new QLabel("Titre :");
+    searchTitre = new QLineEdit();
+    searchTitre->setPlaceholderText("Rechercher par titre...");
+    searchTitre->setMinimumWidth(150);
+
+    QLabel *labelDescription = new QLabel("Description :");
+    searchDescription = new QLineEdit();
+    searchDescription->setPlaceholderText("Rechercher par description...");
+    searchDescription->setMinimumWidth(150);
+
+    QLabel *labelDuree = new QLabel("Durée (h) :");
+    spinDuree = new QSpinBox();
+    spinDuree->setRange(0, 200);
+    spinDuree->setValue(0);
+    spinDuree->setFixedWidth(70);
+    spinDuree->setToolTip("0 = ignorer ce critère");
+
+    btnRechercherCours = creerBouton("🔍 Rechercher", "primary");
+    btnReinitialiserCours = creerBouton("🔄 Réinitialiser", "secondary");
+
+    rechercheCoursLayout->addWidget(labelTitre);
+    rechercheCoursLayout->addWidget(searchTitre);
+    rechercheCoursLayout->addWidget(labelDescription);
+    rechercheCoursLayout->addWidget(searchDescription);
+    rechercheCoursLayout->addWidget(labelDuree);
+    rechercheCoursLayout->addWidget(spinDuree);
+    rechercheCoursLayout->addWidget(btnRechercherCours);
+    rechercheCoursLayout->addWidget(btnReinitialiserCours);
+    rechercheCoursLayout->addStretch();
+
+    layoutCours->addLayout(rechercheCoursLayout);
+
+    connect(btnRechercherCours, &QPushButton::clicked, this, &MainWindow::rechercherCours);
+    connect(btnReinitialiserCours, &QPushButton::clicked, this, &MainWindow::reinitialiserRechercheCours);
+    // Tableau Cours
     modelCours = new QStandardItemModel(this);
     modelCours->setHorizontalHeaderLabels({"ID", "Titre", "Description", "Durée (h)", "Formateur"});
 
@@ -264,7 +353,7 @@ void MainWindow::setupUI()
     styliserTable(tableCours);
     layoutCours->addWidget(tableCours, 1);
 
-    // Boutons
+    // Boutons Cours
     QHBoxLayout *buttonsCours = new QHBoxLayout();
     buttonsCours->setSpacing(10);
 
@@ -288,7 +377,10 @@ void MainWindow::setupUI()
 
     stackedWidget->addWidget(pageCours);
 
-    // ----- PAGE 4 : Paramètres -----
+    // ============================================================
+    // PAGE 4 : PARAMÈTRES
+    // ============================================================
+
     QWidget *pageSettings = new QWidget();
     QVBoxLayout *settingsLayout = new QVBoxLayout(pageSettings);
     settingsLayout->setContentsMargins(30, 30, 30, 30);
@@ -298,7 +390,10 @@ void MainWindow::setupUI()
     settingsLayout->addStretch();
     stackedWidget->addWidget(pageSettings);
 
-    // ----- PAGE 5 : Quitter -----
+    // ============================================================
+    // PAGE 5 : QUITTER
+    // ============================================================
+
     QWidget *pageQuit = new QWidget();
     QVBoxLayout *quitLayout = new QVBoxLayout(pageQuit);
     quitLayout->setContentsMargins(30, 30, 30, 30);
@@ -555,34 +650,49 @@ void MainWindow::chargerFormateurs()
 // CHARGEMENT COURS
 // ============================================================
 
+// ============================================================
+// CHARGEMENT COURS (avec nom du formateur)
+// ============================================================
+
 void MainWindow::chargerCours()
 {
     if (!modelCours) return;
 
     modelCours->removeRows(0, modelCours->rowCount());
 
-    QList<Cours> cours = CoursDAO::readAll();
+    // ✅ Requête avec JOIN pour récupérer le nom du formateur
+    QSqlQuery query;
+    query.prepare(R"(
+        SELECT c.id_cours, c.titre, c.description, c.duree_heures,
+               f.nom || ' ' || f.prenom AS formateur_nom
+        FROM COURS c
+        JOIN FORMATEUR f ON c.id_formateur = f.id_formateur
+        ORDER BY c.id_cours
+    )");
 
-    for (const Cours& c : cours) {
+    if (!query.exec()) {
+        qDebug() << "❌ Erreur chargement cours :" << query.lastError().text();
+        return;
+    }
+
+    while (query.next()) {
         QList<QStandardItem*> row;
-        row.append(new QStandardItem(QString::number(c.getId())));
+        row.append(new QStandardItem(query.value("id_cours").toString()));
         row[0]->setTextAlignment(Qt::AlignCenter);
 
-        row.append(new QStandardItem(c.getTitre()));
-        row.append(new QStandardItem(c.getDescription()));
+        row.append(new QStandardItem(query.value("titre").toString()));
+        row.append(new QStandardItem(query.value("description").toString()));
 
-        QStandardItem *dureeItem = new QStandardItem(QString::number(c.getDureeHeures()));
+        QStandardItem *dureeItem = new QStandardItem(query.value("duree_heures").toString());
         dureeItem->setTextAlignment(Qt::AlignCenter);
         row.append(dureeItem);
 
-        QStandardItem *idFormateurItem = new QStandardItem(QString::number(c.getIdFormateur()));
-        idFormateurItem->setTextAlignment(Qt::AlignCenter);
-        row.append(idFormateurItem);
+        // ✅ Nom + Prénom du formateur (au lieu de son ID)
+        row.append(new QStandardItem(query.value("formateur_nom").toString()));
 
         modelCours->appendRow(row);
     }
 }
-
 // ============================================================
 // SLOTS FORMATEURS (COMPLETS)
 // ============================================================
@@ -684,7 +794,26 @@ void MainWindow::actualiserFormateurs()
 
 void MainWindow::ajouterCours()
 {
-    QMessageBox::information(this, "Ajouter", "Fonctionnalité à implémenter");
+    AjouterCoursDialog dialog(this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        Cours c = dialog.getCours();
+
+        // Vérifier doublon
+        if (CoursDAO::titreExiste(c.getTitre())) {
+            QMessageBox::warning(this, "Doublon",
+                                 "❌ Un cours avec ce titre existe déjà !\n"
+                                 "Veuillez utiliser un autre titre.");
+            return;
+        }
+
+        if (CoursDAO::create(c)) {
+            QMessageBox::information(this, "Succès", "✅ Cours ajouté avec succès !");
+            chargerCours();
+        } else {
+            QMessageBox::critical(this, "Erreur", "❌ Impossible d'ajouter le cours.");
+        }
+    }
 }
 
 void MainWindow::modifierCours()
@@ -697,8 +826,29 @@ void MainWindow::modifierCours()
 
     int row = selection.first().row();
     int id = modelCours->item(row, 0)->text().toInt();
+    Cours c = CoursDAO::readById(id);
 
-    QMessageBox::information(this, "Modifier", "Fonctionnalité de modification à implémenter.");
+    ModifierCoursDialog dialog(c, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        Cours cModifie = dialog.getCours();
+
+        // Vérifier doublon (sauf si c'est le même cours)
+        if (cModifie.getTitre() != c.getTitre() &&
+            CoursDAO::titreExiste(cModifie.getTitre(), cModifie.getId())) {
+            QMessageBox::warning(this, "Doublon",
+                                 "❌ Un autre cours avec ce titre existe déjà !\n"
+                                 "Veuillez utiliser un autre titre.");
+            return;
+        }
+
+        if (CoursDAO::update(cModifie)) {
+            QMessageBox::information(this, "Succès", "✅ Cours modifié avec succès !");
+            chargerCours();
+        } else {
+            QMessageBox::critical(this, "Erreur", "❌ Impossible de modifier le cours.");
+        }
+    }
 }
 
 void MainWindow::supprimerCours()
@@ -729,8 +879,147 @@ void MainWindow::supprimerCours()
     }
 }
 
+
 void MainWindow::actualiserCours()
 {
     chargerCours();
     QMessageBox::information(this, "Actualisation", "✅ Liste des cours actualisée.");
+}
+// ============================================================
+// RECHERCHE MULTICRITÈRES
+// ============================================================
+
+void MainWindow::rechercherFormateurs()
+{
+    QString nom = searchNom->text().trimmed();
+    QString prenom = searchPrenom->text().trimmed();
+    QString specialite = searchSpecialite->text().trimmed();
+
+    // Vérifier qu'au moins un champ est rempli
+    if (nom.isEmpty() && prenom.isEmpty() && specialite.isEmpty()) {
+        QMessageBox::warning(this, "Recherche",
+                             "Veuillez saisir au moins un critère de recherche.");
+        return;
+    }
+
+    // Effectuer la recherche
+    QList<Formateur> resultats = FormateurDAO::search(nom, prenom, specialite);
+
+    // Vider le tableau
+    modelFormateurs->removeRows(0, modelFormateurs->rowCount());
+
+    // Afficher les résultats
+    if (resultats.isEmpty()) {
+        QMessageBox::information(this, "Recherche",
+                                 "Aucun formateur ne correspond à vos critères.");
+        return;
+    }
+
+    for (const Formateur& f : resultats) {
+        QList<QStandardItem*> row;
+        row.append(new QStandardItem(QString::number(f.getId())));
+        row[0]->setTextAlignment(Qt::AlignCenter);
+        row.append(new QStandardItem(f.getNom()));
+        row.append(new QStandardItem(f.getPrenom()));
+
+        QStandardItem *emailItem = new QStandardItem(f.getEmail());
+        emailItem->setToolTip(f.getEmail());
+        row.append(emailItem);
+
+        row.append(new QStandardItem(f.getSpecialite()));
+
+        QString dateStr = f.getDateEmbauche().toString("dd/MM/yyyy");
+        QStandardItem *dateItem = new QStandardItem(dateStr);
+        dateItem->setTextAlignment(Qt::AlignCenter);
+        row.append(dateItem);
+
+        modelFormateurs->appendRow(row);
+    }
+
+    QMessageBox::information(this, "Recherche",
+                             QString("✅ %1 formateur(s) trouvé(s).").arg(resultats.size()));
+}
+
+void MainWindow::reinitialiserRecherche()
+{
+    // Vider les champs de recherche
+    searchNom->clear();
+    searchPrenom->clear();
+    searchSpecialite->clear();
+
+    // Recharger tous les formateurs
+    chargerFormateurs();
+
+    QMessageBox::information(this, "Réinitialisation",
+                             "✅ Liste complète des formateurs affichée.");
+}
+// ============================================================
+// RECHERCHE MULTICRITÈRES COURS
+// ============================================================
+
+void MainWindow::rechercherCours()
+{
+    QString titre = searchTitre->text().trimmed();
+    QString description = searchDescription->text().trimmed();
+    int duree = spinDuree->value();
+
+    // Vérifier qu'au moins un critère est rempli
+    if (titre.isEmpty() && description.isEmpty() && duree == 0) {
+        QMessageBox::warning(this, "Recherche",
+                             "Veuillez saisir au moins un critère de recherche.");
+        return;
+    }
+
+    // Appel de la recherche (duree = 0 signifie "ignorer ce critère")
+    QList<Cours> resultats = CoursDAO::search(titre, description, duree);
+
+    // Vider le tableau
+    modelCours->removeRows(0, modelCours->rowCount());
+
+    // Afficher les résultats
+    if (resultats.isEmpty()) {
+        QMessageBox::information(this, "Recherche",
+                                 "Aucun cours ne correspond à vos critères.");
+        return;
+    }
+
+    for (const Cours& c : resultats) {
+        QList<QStandardItem*> row;
+        row.append(new QStandardItem(QString::number(c.getId())));
+        row[0]->setTextAlignment(Qt::AlignCenter);
+
+        row.append(new QStandardItem(c.getTitre()));
+        row.append(new QStandardItem(c.getDescription()));
+
+        QStandardItem *dureeItem = new QStandardItem(QString::number(c.getDureeHeures()));
+        dureeItem->setTextAlignment(Qt::AlignCenter);
+        row.append(dureeItem);
+
+        // Récupérer le nom du formateur
+        QSqlQuery query;
+        query.prepare("SELECT nom || ' ' || prenom AS formateur_nom FROM FORMATEUR WHERE id_formateur = :id");
+        query.bindValue(":id", c.getIdFormateur());
+        QString formateurNom = "";
+        if (query.exec() && query.next()) {
+            formateurNom = query.value("formateur_nom").toString();
+        }
+        row.append(new QStandardItem(formateurNom));
+
+        modelCours->appendRow(row);
+    }
+
+    QMessageBox::information(this, "Recherche",
+                             QString("✅ %1 cours trouvé(s).").arg(resultats.size()));
+}
+
+void MainWindow::reinitialiserRechercheCours()
+{
+    searchTitre->clear();
+    searchDescription->clear();
+    spinDuree->setValue(0);
+
+    chargerCours();
+
+    QMessageBox::information(this, "Réinitialisation",
+                             "✅ Liste complète des cours affichée.");
 }
