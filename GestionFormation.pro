@@ -1,4 +1,4 @@
-QT       += core widgets sql
+QT += core widgets sql charts printsupport
 CONFIG += c++17
 
 # Dossier des headers
@@ -16,7 +16,9 @@ SOURCES += \
     src/formateur/formateurdao.cpp \
     src/cours/cours.cpp \
     src/cours/coursdao.cpp \
-    src/formateur/modifierformateurdialog.cpp
+    src/formateur/modifierformateurdialog.cpp \
+    src/pdfgenerator.cpp \
+    src/statistiquesdialog.cpp
 
 # ========== HEADERS ==========
 HEADERS += \
@@ -29,7 +31,9 @@ HEADERS += \
     src/formateur/formateurdao.h \
     src/cours/cours.h \
     src/cours/coursdao.h \
-    src/formateur/modifierformateurdialog.h
+    src/formateur/modifierformateurdialog.h \
+    src/pdfgenerator.h \
+    src/statistiquesdialog.h
 
 # ========== FORMULAIRES ==========
 FORMS += \

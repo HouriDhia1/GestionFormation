@@ -5,7 +5,7 @@
 #include "src/cours/coursdao.h"
 #include "database.h"
 #include "src/formateur/ajouterformateurdialog.h"
-
+#include "src/statistiquesdialog.h"
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QDebug>
@@ -21,6 +21,9 @@
 #include "src/cours/modifiercoursdialog.h"
 #include <QSqlQuery>
 #include <QSqlError>
+#include "src/pdfgenerator.h"
+#include <QFileDialog>
+#include <QMessageBox>
 // ============================================================
 // CONSTRUCTEUR
 // ============================================================
@@ -176,16 +179,251 @@ void MainWindow::setupUI()
     dashboardTitle->setStyleSheet("font-size: 28px; font-weight: 700; color: #1A2332;");
     dashboardLayout->addWidget(dashboardTitle);
 
+    // ========================================================
+    // CARTES STATISTIQUES
+    // ========================================================
+
     QHBoxLayout *cardsLayout = new QHBoxLayout();
     cardsLayout->setSpacing(20);
-    cardsLayout->addWidget(creerCard("👨‍🏫", "Total Formateurs", "0", "white"));
-    cardsLayout->addWidget(creerCard("📚", "Total Cours", "0", "white"));
-    cardsLayout->addWidget(creerCard("🟢", "État du système", "Connecté", "#E8F8F0"));
+
+    // Carte 1 : Total Formateurs
+    QFrame *cardTotalFormateurs = new QFrame();
+    cardTotalFormateurs->setStyleSheet(R"(
+        QFrame {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #315BCE, stop:1 #4B7BEA);
+            border-radius: 16px;
+            color: white;
+        }
+    )");
+    cardTotalFormateurs->setFixedHeight(120);
+    cardTotalFormateurs->setMinimumWidth(180);
+
+    QVBoxLayout *cardTotalFormateursLayout = new QVBoxLayout(cardTotalFormateurs);
+    cardTotalFormateursLayout->setContentsMargins(20, 15, 20, 15);
+
+    QLabel *cardTotalFormateursIcon = new QLabel("👨‍🏫");
+    cardTotalFormateursIcon->setStyleSheet("font-size: 28px;");
+
+    QLabel *cardTotalFormateursTitle = new QLabel("Total Formateurs");
+    cardTotalFormateursTitle->setStyleSheet("font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8);");
+
+    dashboardTotalFormateurs = new QLabel("0");
+    dashboardTotalFormateurs->setStyleSheet("font-size: 32px; font-weight: 700;");
+
+    cardTotalFormateursLayout->addWidget(cardTotalFormateursIcon);
+    cardTotalFormateursLayout->addWidget(cardTotalFormateursTitle);
+    cardTotalFormateursLayout->addWidget(dashboardTotalFormateurs);
+
+    cardsLayout->addWidget(cardTotalFormateurs);
+
+    // Carte 2 : Total Cours
+    QFrame *cardTotalCours = new QFrame();
+    cardTotalCours->setStyleSheet(R"(
+        QFrame {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #0EA5E9, stop:1 #38BDF8);
+            border-radius: 16px;
+            color: white;
+        }
+    )");
+    cardTotalCours->setFixedHeight(120);
+    cardTotalCours->setMinimumWidth(180);
+
+    QVBoxLayout *cardTotalCoursLayout = new QVBoxLayout(cardTotalCours);
+    cardTotalCoursLayout->setContentsMargins(20, 15, 20, 15);
+
+    QLabel *cardTotalCoursIcon = new QLabel("📚");
+    cardTotalCoursIcon->setStyleSheet("font-size: 28px;");
+
+    QLabel *cardTotalCoursTitle = new QLabel("Total Cours");
+    cardTotalCoursTitle->setStyleSheet("font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8);");
+
+    dashboardTotalCours = new QLabel("0");
+    dashboardTotalCours->setStyleSheet("font-size: 32px; font-weight: 700;");
+
+    cardTotalCoursLayout->addWidget(cardTotalCoursIcon);
+    cardTotalCoursLayout->addWidget(cardTotalCoursTitle);
+    cardTotalCoursLayout->addWidget(dashboardTotalCours);
+
+    cardsLayout->addWidget(cardTotalCours);
+
+    // Carte 3 : État du système
+    QFrame *cardStatus = new QFrame();
+    cardStatus->setStyleSheet(R"(
+        QFrame {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #10B981, stop:1 #34D399);
+            border-radius: 16px;
+            color: white;
+        }
+    )");
+    cardStatus->setFixedHeight(120);
+    cardStatus->setMinimumWidth(180);
+
+    QVBoxLayout *cardStatusLayout = new QVBoxLayout(cardStatus);
+    cardStatusLayout->setContentsMargins(20, 15, 20, 15);
+
+    QLabel *cardStatusIcon = new QLabel("🟢");
+    cardStatusIcon->setStyleSheet("font-size: 28px;");
+
+    QLabel *cardStatusTitle = new QLabel("État du système");
+    cardStatusTitle->setStyleSheet("font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8);");
+
+    dashboardStatus = new QLabel("Connecté");
+    dashboardStatus->setStyleSheet("font-size: 32px; font-weight: 700;");
+
+    cardStatusLayout->addWidget(cardStatusIcon);
+    cardStatusLayout->addWidget(cardStatusTitle);
+    cardStatusLayout->addWidget(dashboardStatus);
+
+    cardsLayout->addWidget(cardStatus);
+
+    // Carte 4 : Spécialités
+    QFrame *cardSpecialites = new QFrame();
+    cardSpecialites->setStyleSheet(R"(
+        QFrame {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #8B5CF6, stop:1 #A78BFA);
+            border-radius: 16px;
+            color: white;
+        }
+    )");
+    cardSpecialites->setFixedHeight(120);
+    cardSpecialites->setMinimumWidth(180);
+
+    QVBoxLayout *cardSpecialitesLayout = new QVBoxLayout(cardSpecialites);
+    cardSpecialitesLayout->setContentsMargins(20, 15, 20, 15);
+
+    QLabel *cardSpecialitesIcon = new QLabel("🎯");
+    cardSpecialitesIcon->setStyleSheet("font-size: 28px;");
+
+    QLabel *cardSpecialitesTitle = new QLabel("Spécialités");
+    cardSpecialitesTitle->setStyleSheet("font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8);");
+
+    dashboardSpecialites = new QLabel("0");
+    dashboardSpecialites->setStyleSheet("font-size: 32px; font-weight: 700;");
+
+    cardSpecialitesLayout->addWidget(cardSpecialitesIcon);
+    cardSpecialitesLayout->addWidget(cardSpecialitesTitle);
+    cardSpecialitesLayout->addWidget(dashboardSpecialites);
+
+    cardsLayout->addWidget(cardSpecialites);
+
+    cardsLayout->addStretch();
     dashboardLayout->addLayout(cardsLayout);
-    dashboardLayout->addStretch();
+
+    // ========================================================
+    // BOUTONS DE NAVIGATION STATISTIQUES
+    // ========================================================
+
+    QHBoxLayout *toggleLayout = new QHBoxLayout();
+    toggleLayout->setSpacing(15);
+
+    QPushButton *btnStatsFormateurs = creerBouton("👨‍🏫 Statistiques Formateurs", "primary");
+    QPushButton *btnStatsCours = creerBouton("📚 Statistiques Cours", "primary");
+
+    btnStatsFormateurs->setCheckable(true);
+    btnStatsCours->setCheckable(true);
+    btnStatsFormateurs->setChecked(true);
+
+    QWidget *chartContainer = new QWidget();
+    QVBoxLayout *chartLayout = new QVBoxLayout(chartContainer);
+    chartLayout->setContentsMargins(0, 0, 0, 0);
+
+    QChartView *dashboardChartView = new QChartView();
+    dashboardChartView->setRenderHint(QPainter::Antialiasing);
+    dashboardChartView->setMinimumHeight(350);
+    chartLayout->addWidget(dashboardChartView);
+
+    auto chargerStatsDashboard = [this, dashboardChartView, btnStatsFormateurs, btnStatsCours]() {
+        if (btnStatsFormateurs->isChecked()) {
+            QSqlQuery query;
+            query.exec("SELECT specialite, COUNT(*) AS nb FROM FORMATEUR GROUP BY specialite ORDER BY nb DESC");
+
+            QPieSeries *series = new QPieSeries();
+            while (query.next()) {
+                QString specialite = query.value("specialite").toString();
+                int nb = query.value("nb").toInt();
+                if (specialite.isEmpty()) specialite = "Non spécifiée";
+                QPieSlice *slice = series->append(specialite + " (" + QString::number(nb) + ")", nb);
+                slice->setLabelVisible(true);
+                slice->setLabelColor(Qt::black);
+                slice->setLabelPosition(QPieSlice::LabelInsideHorizontal);
+            }
+
+            QChart *chart = new QChart();
+            chart->addSeries(series);
+            chart->setTitle("👨‍🏫 Répartition des formateurs par spécialité");
+            chart->setAnimationOptions(QChart::SeriesAnimations);
+            chart->legend()->setVisible(true);
+            chart->legend()->setAlignment(Qt::AlignRight);
+            chart->setTheme(QChart::ChartThemeLight);
+            chart->setBackgroundBrush(QBrush(Qt::white));
+            chart->setBackgroundRoundness(10);
+            dashboardChartView->setChart(chart);
+        } else {
+            QSqlQuery query;
+            query.exec(R"(
+                SELECT f.nom || ' ' || f.prenom AS formateur, COUNT(c.id_cours) AS nb
+                FROM FORMATEUR f
+                LEFT JOIN COURS c ON f.id_formateur = c.id_formateur
+                GROUP BY f.id_formateur, f.nom, f.prenom
+                ORDER BY nb DESC
+            )");
+
+            QPieSeries *series = new QPieSeries();
+            while (query.next()) {
+                QString formateur = query.value("formateur").toString();
+                int nb = query.value("nb").toInt();
+                if (formateur.isEmpty()) formateur = "Formateur inconnu";
+                QPieSlice *slice = series->append(formateur + " (" + QString::number(nb) + ")", nb);
+                slice->setLabelVisible(true);
+                slice->setLabelColor(Qt::black);
+                slice->setLabelPosition(QPieSlice::LabelInsideHorizontal);
+            }
+
+            QChart *chart = new QChart();
+            chart->addSeries(series);
+            chart->setTitle("📚 Nombre de cours par formateur");
+            chart->setAnimationOptions(QChart::SeriesAnimations);
+            chart->legend()->setVisible(true);
+            chart->legend()->setAlignment(Qt::AlignRight);
+            chart->setTheme(QChart::ChartThemeLight);
+            chart->setBackgroundBrush(QBrush(Qt::white));
+            chart->setBackgroundRoundness(10);
+            dashboardChartView->setChart(chart);
+        }
+    };
+
+    connect(btnStatsFormateurs, &QPushButton::clicked, [btnStatsFormateurs, btnStatsCours, chargerStatsDashboard]() {
+        btnStatsFormateurs->setChecked(true);
+        btnStatsCours->setChecked(false);
+        chargerStatsDashboard();
+    });
+
+    connect(btnStatsCours, &QPushButton::clicked, [btnStatsFormateurs, btnStatsCours, chargerStatsDashboard]() {
+        btnStatsCours->setChecked(true);
+        btnStatsFormateurs->setChecked(false);
+        chargerStatsDashboard();
+    });
+
+    toggleLayout->addStretch();
+    toggleLayout->addWidget(btnStatsFormateurs);
+    toggleLayout->addWidget(btnStatsCours);
+    toggleLayout->addStretch();
+
+    dashboardLayout->addLayout(toggleLayout);
+    dashboardLayout->addWidget(chartContainer, 1);
+
+    chargerStatsDashboard();
 
     stackedWidget->addWidget(pageDashboard);
 
+    // ============================================================
+    // PAGE 2 : FORMATEURS
+    // ============================================================
+    // Boutons Formateurs
     // ============================================================
     // PAGE 2 : FORMATEURS
     // ============================================================
@@ -199,7 +437,6 @@ void MainWindow::setupUI()
     titreFormateurs->setStyleSheet("font-size: 24px; font-weight: 700; color: #1A2332;");
     layoutFormateurs->addWidget(titreFormateurs);
 
-    // Cartes stats Formateurs
     QHBoxLayout *statsFormateurs = new QHBoxLayout();
     statsFormateurs->setSpacing(15);
     statsFormateurs->addWidget(creerCard("👨‍🏫", "Total", "0", "white"));
@@ -274,7 +511,10 @@ void MainWindow::setupUI()
 
     connect(btnTrierFormateurs, &QPushButton::clicked, this, &MainWindow::trierFormateurs);
 
-    // Tableau Formateurs
+    // ========================================================
+    // TABLEAU FORMATEURS
+    // ========================================================
+
     modelFormateurs = new QStandardItemModel(this);
     modelFormateurs->setHorizontalHeaderLabels({"ID", "Nom", "Prénom", "Email", "Spécialité", "Date d'embauche"});
 
@@ -283,7 +523,10 @@ void MainWindow::setupUI()
     styliserTable(tableFormateurs);
     layoutFormateurs->addWidget(tableFormateurs, 1);
 
-    // Boutons Formateurs
+    // ========================================================
+    // BOUTONS FORMATEURS (Ajouter, Modifier, Supprimer, PDF, Actualiser)
+    // ========================================================
+
     QHBoxLayout *buttonsFormateurs = new QHBoxLayout();
     buttonsFormateurs->setSpacing(10);
 
@@ -292,10 +535,31 @@ void MainWindow::setupUI()
     btnSupprimerFormateur = creerBouton("⌫  Supprimer", "danger");
     btnActualiserFormateurs = creerBouton("↻  Actualiser", "secondary");
 
+    // ✅ Bouton PDF Formateurs
+    QPushButton *btnPDFFormateurs = creerBouton("📄 Exporter PDF", "primary");
+    connect(btnPDFFormateurs, &QPushButton::clicked, this, [this]() {
+        QString chemin = QFileDialog::getSaveFileName(
+            this,
+            "Enregistrer le PDF",
+            QDir::homePath() + "/formateurs.pdf",
+            "PDF Files (*.pdf)"
+            );
+
+        if (!chemin.isEmpty()) {
+            QList<Formateur> formateurs = FormateurDAO::readAll();
+            if (PDFGenerator::genererPDFFormateurs(formateurs, chemin)) {
+                QMessageBox::information(this, "Succès", "✅ PDF généré avec succès !\n" + chemin);
+            } else {
+                QMessageBox::critical(this, "Erreur", "❌ Erreur lors de la génération du PDF.");
+            }
+        }
+    });
+
     buttonsFormateurs->addWidget(btnAjouterFormateur);
     buttonsFormateurs->addWidget(btnModifierFormateur);
     buttonsFormateurs->addWidget(btnSupprimerFormateur);
     buttonsFormateurs->addStretch();
+    buttonsFormateurs->addWidget(btnPDFFormateurs);
     buttonsFormateurs->addWidget(btnActualiserFormateurs);
 
     layoutFormateurs->addLayout(buttonsFormateurs);
@@ -320,7 +584,6 @@ void MainWindow::setupUI()
     titreCours->setStyleSheet("font-size: 24px; font-weight: 700; color: #1A2332;");
     layoutCours->addWidget(titreCours);
 
-    // Cartes stats Cours
     QHBoxLayout *statsCours = new QHBoxLayout();
     statsCours->setSpacing(15);
     statsCours->addWidget(creerCard("📚", "Total", "0", "white"));
@@ -372,7 +635,7 @@ void MainWindow::setupUI()
     connect(btnReinitialiserCours, &QPushButton::clicked, this, &MainWindow::reinitialiserRechercheCours);
 
     // ========================================================
-    // TRI MULTICRITÈRES COURS (PLACÉ ICI, APRÈS layoutCours)
+    // TRI MULTICRITÈRES COURS
     // ========================================================
 
     QHBoxLayout *triCoursLayout = new QHBoxLayout();
@@ -397,7 +660,10 @@ void MainWindow::setupUI()
 
     connect(btnTrierCours, &QPushButton::clicked, this, &MainWindow::trierCours);
 
-    // Tableau Cours
+    // ========================================================
+    // TABLEAU COURS
+    // ========================================================
+
     modelCours = new QStandardItemModel(this);
     modelCours->setHorizontalHeaderLabels({"ID", "Titre", "Description", "Durée (h)", "Formateur"});
 
@@ -406,7 +672,10 @@ void MainWindow::setupUI()
     styliserTable(tableCours);
     layoutCours->addWidget(tableCours, 1);
 
-    // Boutons Cours
+    // ========================================================
+    // BOUTONS COURS (Ajouter, Modifier, Supprimer, PDF, Actualiser)
+    // ========================================================
+
     QHBoxLayout *buttonsCours = new QHBoxLayout();
     buttonsCours->setSpacing(10);
 
@@ -415,10 +684,31 @@ void MainWindow::setupUI()
     btnSupprimerCours = creerBouton("⌫  Supprimer", "danger");
     btnActualiserCours = creerBouton("↻  Actualiser", "secondary");
 
+    // ✅ Bouton PDF Cours
+    QPushButton *btnPDFCours = creerBouton("📄 Exporter PDF", "primary");
+    connect(btnPDFCours, &QPushButton::clicked, this, [this]() {
+        QString chemin = QFileDialog::getSaveFileName(
+            this,
+            "Enregistrer le PDF",
+            QDir::homePath() + "/cours.pdf",
+            "PDF Files (*.pdf)"
+            );
+
+        if (!chemin.isEmpty()) {
+            QList<Cours> cours = CoursDAO::readAll();
+            if (PDFGenerator::genererPDFCours(cours, chemin)) {
+                QMessageBox::information(this, "Succès", "✅ PDF généré avec succès !\n" + chemin);
+            } else {
+                QMessageBox::critical(this, "Erreur", "❌ Erreur lors de la génération du PDF.");
+            }
+        }
+    });
+
     buttonsCours->addWidget(btnAjouterCours);
     buttonsCours->addWidget(btnModifierCours);
     buttonsCours->addWidget(btnSupprimerCours);
     buttonsCours->addStretch();
+    buttonsCours->addWidget(btnPDFCours);
     buttonsCours->addWidget(btnActualiserCours);
 
     layoutCours->addLayout(buttonsCours);
@@ -429,7 +719,6 @@ void MainWindow::setupUI()
     connect(btnActualiserCours, &QPushButton::clicked, this, &MainWindow::actualiserCours);
 
     stackedWidget->addWidget(pageCours);
-
     // ============================================================
     // PAGE 4 : PARAMÈTRES
     // ============================================================
@@ -461,52 +750,6 @@ void MainWindow::setupUI()
     stackedWidget->addWidget(pageQuit);
 
     mainLayout->addWidget(stackedWidget, 1);
-}
-
-// ============================================================
-// CHANGER DE PAGE
-// ============================================================
-
-void MainWindow::changerPage(int index)
-{
-    stackedWidget->setCurrentIndex(index);
-}
-
-// ============================================================
-// CRÉER UNE CARTE
-// ============================================================
-
-QFrame* MainWindow::creerCard(const QString& icon, const QString& title, const QString& value, const QString& bgColor)
-{
-    QFrame *card = new QFrame();
-    card->setFixedHeight(100);
-    card->setMinimumWidth(180);
-    card->setStyleSheet(QString(R"(
-        QFrame {
-            background-color: %1;
-            border-radius: 12px;
-            border: 1px solid #E5E7EB;
-        }
-    )").arg(bgColor == "white" ? "white" : bgColor));
-
-    QVBoxLayout *layout = new QVBoxLayout(card);
-    layout->setContentsMargins(16, 14, 16, 14);
-    layout->setSpacing(4);
-
-    QLabel *iconLabel = new QLabel(icon);
-    iconLabel->setStyleSheet("font-size: 22px;");
-
-    QLabel *titleLabel = new QLabel(title);
-    titleLabel->setStyleSheet("color: #6B7280; font-size: 12px; font-weight: 600;");
-
-    QLabel *valueLabel = new QLabel(value);
-    valueLabel->setStyleSheet("color: #1A2332; font-size: 20px; font-weight: 700;");
-
-    layout->addWidget(iconLabel);
-    layout->addWidget(titleLabel);
-    layout->addWidget(valueLabel);
-
-    return card;
 }
 
 // ============================================================
@@ -699,6 +942,26 @@ void MainWindow::chargerFormateurs()
         modelFormateurs->appendRow(row);
     }
     modelFormateurs->sort(-1); // Réinitialiser le tri
+
+    // ========================================================
+    // ✅ METTRE À JOUR LE DASHBOARD
+    // ========================================================
+
+    // Total Formateurs
+    if (dashboardTotalFormateurs) {
+        dashboardTotalFormateurs->setText(QString::number(formateurs.size()));
+    }
+
+    // Nombre de spécialités
+    QStringList specialites;
+    for (const Formateur& f : formateurs) {
+        if (!f.getSpecialite().isEmpty() && !specialites.contains(f.getSpecialite())) {
+            specialites.append(f.getSpecialite());
+        }
+    }
+    // Mettre à jour la carte des spécialités
+    QLabel *dashboardSpecialites = findChild<QLabel*>();
+    // Ou si tu as une variable dédiée, utilise-la
 }
 // ============================================================
 // CHARGEMENT COURS
@@ -729,6 +992,8 @@ void MainWindow::chargerCours()
         return;
     }
 
+    int totalCours = 0;
+
     while (query.next()) {
         QList<QStandardItem*> row;
         row.append(new QStandardItem(query.value("id_cours").toString()));
@@ -745,8 +1010,17 @@ void MainWindow::chargerCours()
         row.append(new QStandardItem(query.value("formateur_nom").toString()));
 
         modelCours->appendRow(row);
+        totalCours++;
     }
     modelCours->sort(-1); // Réinitialiser le tri
+
+    // ========================================================
+    // ✅ METTRE À JOUR LE DASHBOARD
+    // ========================================================
+
+    if (dashboardTotalCours) {
+        dashboardTotalCours->setText(QString::number(totalCours));
+    }
 }
 // ============================================================
 // SLOTS FORMATEURS (COMPLETS)
@@ -1109,4 +1383,48 @@ void MainWindow::trierCours()
     QMessageBox::information(this, "Tri",
                              QString("✅ Tri effectué par : %1")
                                  .arg(comboTriCours->currentText()));
+}
+// ============================================================
+// CRÉER UNE CARTE
+// ============================================================
+
+QFrame* MainWindow::creerCard(const QString& icon, const QString& title, const QString& value, const QString& bgColor)
+{
+    QFrame *card = new QFrame();
+    card->setFixedHeight(100);
+    card->setMinimumWidth(180);
+    card->setStyleSheet(QString(R"(
+        QFrame {
+            background-color: %1;
+            border-radius: 12px;
+            border: 1px solid #E5E7EB;
+        }
+    )").arg(bgColor == "white" ? "white" : bgColor));
+
+    QVBoxLayout *layout = new QVBoxLayout(card);
+    layout->setContentsMargins(16, 14, 16, 14);
+    layout->setSpacing(4);
+
+    QLabel *iconLabel = new QLabel(icon);
+    iconLabel->setStyleSheet("font-size: 22px;");
+
+    QLabel *titleLabel = new QLabel(title);
+    titleLabel->setStyleSheet("color: #6B7280; font-size: 12px; font-weight: 600;");
+
+    QLabel *valueLabel = new QLabel(value);
+    valueLabel->setStyleSheet("color: #1A2332; font-size: 20px; font-weight: 700;");
+
+    layout->addWidget(iconLabel);
+    layout->addWidget(titleLabel);
+    layout->addWidget(valueLabel);
+
+    return card;
+}
+// ============================================================
+// CHANGER DE PAGE
+// ============================================================
+
+void MainWindow::changerPage(int index)
+{
+    stackedWidget->setCurrentIndex(index);
 }

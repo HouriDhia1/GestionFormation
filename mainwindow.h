@@ -65,6 +65,12 @@ private slots:
     void reinitialiserRechercheCours();
 
 private:
+    // Dashboard
+    QLabel *dashboardTotalFormateurs;
+    QLabel *dashboardTotalCours;
+    QLabel *dashboardStatus;
+    QLabel *dashboardSpecialites;
+
     Ui::MainWindow *ui;
 
     // Sidebar
