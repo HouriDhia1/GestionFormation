@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
+#include <QDesktopServices>
+#include <QUrl>
 #include "src/formateur/formateurdao.h"
 #include "src/cours/coursdao.h"
 #include "database.h"
@@ -423,10 +424,6 @@ void MainWindow::setupUI()
     // ============================================================
     // PAGE 2 : FORMATEURS
     // ============================================================
-    // Boutons Formateurs
-    // ============================================================
-    // PAGE 2 : FORMATEURS
-    // ============================================================
 
     pageFormateurs = new QWidget();
     QVBoxLayout *layoutFormateurs = new QVBoxLayout(pageFormateurs);
@@ -498,7 +495,6 @@ void MainWindow::setupUI()
     comboTriFormateurs->addItem("Nom");
     comboTriFormateurs->addItem("Prénom");
     comboTriFormateurs->addItem("Spécialité");
-    comboTriFormateurs->addItem("Date d'embauche");
 
     btnTrierFormateurs = creerBouton("🔽 Trier", "primary");
 
@@ -524,7 +520,7 @@ void MainWindow::setupUI()
     layoutFormateurs->addWidget(tableFormateurs, 1);
 
     // ========================================================
-    // BOUTONS FORMATEURS (Ajouter, Modifier, Supprimer, PDF, Actualiser)
+    // BOUTONS FORMATEURS (Ajouter, Modifier, Supprimer, PDF, Email, Actualiser)
     // ========================================================
 
     QHBoxLayout *buttonsFormateurs = new QHBoxLayout();
@@ -555,11 +551,16 @@ void MainWindow::setupUI()
         }
     });
 
+    // ✅ Bouton Email Formateurs
+    QPushButton *btnEmailFormateur = creerBouton("📧 Envoyer email", "primary");
+    connect(btnEmailFormateur, &QPushButton::clicked, this, &MainWindow::envoyerEmailFormateur);
+
     buttonsFormateurs->addWidget(btnAjouterFormateur);
     buttonsFormateurs->addWidget(btnModifierFormateur);
     buttonsFormateurs->addWidget(btnSupprimerFormateur);
     buttonsFormateurs->addStretch();
     buttonsFormateurs->addWidget(btnPDFFormateurs);
+    buttonsFormateurs->addWidget(btnEmailFormateur);
     buttonsFormateurs->addWidget(btnActualiserFormateurs);
 
     layoutFormateurs->addLayout(buttonsFormateurs);
@@ -570,7 +571,6 @@ void MainWindow::setupUI()
     connect(btnActualiserFormateurs, &QPushButton::clicked, this, &MainWindow::actualiserFormateurs);
 
     stackedWidget->addWidget(pageFormateurs);
-
     // ============================================================
     // PAGE 3 : COURS
     // ============================================================
@@ -769,7 +769,7 @@ void MainWindow::styliserTable(QTableView *table)
     table->horizontalHeader()->setStretchLastSection(true);
     table->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
     table->horizontalHeader()->setDefaultSectionSize(130);
-
+table->setSortingEnabled(true);
     table->setStyleSheet(R"(
         QTableView {
             background-color: white;
@@ -928,26 +928,27 @@ void MainWindow::chargerFormateurs()
 
         // Email (affiché en entier)
         QStandardItem *emailItem = new QStandardItem(f.getEmail());
-        emailItem->setToolTip(f.getEmail()); // Tooltip si trop long
+        emailItem->setToolTip(f.getEmail());
         row.append(emailItem);
 
         row.append(new QStandardItem(f.getSpecialite()));
 
-        // Date formatée
-        QString dateStr = f.getDateEmbauche().toString("dd/MM/yyyy");
+        // ✅ Date avec tri correct
+        QDate date = f.getDateEmbauche();
+        QString dateStr = date.toString("dd/MM/yyyy");
         QStandardItem *dateItem = new QStandardItem(dateStr);
-        dateItem->setTextAlignment(Qt::AlignCenter); // Centrer la date
+        // Stocker la date réelle pour le tri
+        dateItem->setData(date, Qt::UserRole);
+        dateItem->setTextAlignment(Qt::AlignCenter);
         row.append(dateItem);
 
         modelFormateurs->appendRow(row);
     }
-    modelFormateurs->sort(-1); // Réinitialiser le tri
 
-    // ========================================================
-    // ✅ METTRE À JOUR LE DASHBOARD
-    // ========================================================
+    // ✅ NE PAS réinitialiser le tri ici ! On laisse le tri actif.
+    // modelFormateurs->sort(-1); // ❌ SUPPRIME CETTE LIGNE
 
-    // Total Formateurs
+    // ✅ Mettre à jour le Dashboard
     if (dashboardTotalFormateurs) {
         dashboardTotalFormateurs->setText(QString::number(formateurs.size()));
     }
@@ -959,9 +960,9 @@ void MainWindow::chargerFormateurs()
             specialites.append(f.getSpecialite());
         }
     }
-    // Mettre à jour la carte des spécialités
-    QLabel *dashboardSpecialites = findChild<QLabel*>();
-    // Ou si tu as une variable dédiée, utilise-la
+    if (dashboardSpecialites) {
+        dashboardSpecialites->setText(QString::number(specialites.size()));
+    }
 }
 // ============================================================
 // CHARGEMENT COURS
@@ -1355,13 +1356,11 @@ void MainWindow::reinitialiserRechercheCours()
 // ============================================================
 // TRI FORMATEURS
 // ============================================================
-
 void MainWindow::trierFormateurs()
 {
     int colonne = comboTriFormateurs->currentIndex();
     Qt::SortOrder ordre = Qt::AscendingOrder;
 
-    // Appliquer le tri sur le modèle
     modelFormateurs->sort(colonne, ordre);
 
     QMessageBox::information(this, "Tri",
@@ -1427,4 +1426,48 @@ QFrame* MainWindow::creerCard(const QString& icon, const QString& title, const Q
 void MainWindow::changerPage(int index)
 {
     stackedWidget->setCurrentIndex(index);
+}
+// ============================================================
+// ENVOYER UN EMAIL À UN FORMATEUR
+// ============================================================
+
+void MainWindow::envoyerEmailFormateur()
+{
+    // 1. Vérifier qu'un formateur est sélectionné
+    QModelIndexList selection = tableFormateurs->selectionModel()->selectedRows();
+    if (selection.isEmpty()) {
+        QMessageBox::warning(this, "Sélection",
+                             "Veuillez sélectionner un formateur dans la liste.");
+        return;
+    }
+
+    // 2. Récupérer les informations du formateur sélectionné
+    int row = selection.first().row();
+    QString email = modelFormateurs->item(row, 3)->text();
+    QString nom = modelFormateurs->item(row, 1)->text();
+    QString prenom = modelFormateurs->item(row, 2)->text();
+
+    // 3. Vérifier que l'email n'est pas vide
+    if (email.isEmpty()) {
+        QMessageBox::warning(this, "Erreur",
+                             "Ce formateur n'a pas d'adresse email enregistrée.");
+        return;
+    }
+
+    // 4. Construire l'URL mailto
+    QString sujet = "Communication Formation Center";
+    QString corps = "Bonjour " + prenom + " " + nom + ",\n\n";
+    corps += "Nous vous contactons dans le cadre de vos activités au centre de formation.\n\n";
+    corps += "Cordialement,\n";
+    corps += "L'équipe Formation Center";
+
+    QString mailto = "mailto:" + email +
+                     "?subject=" + QUrl::toPercentEncoding(sujet) +
+                     "&body=" + QUrl::toPercentEncoding(corps);
+
+    // 5. Ouvrir le client mail par défaut
+    QDesktopServices::openUrl(QUrl(mailto));
+
+    QMessageBox::information(this, "Email",
+                             "✅ Ouverture du client mail pour :\n" + email);
 }

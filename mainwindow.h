@@ -14,6 +14,7 @@
 #include <QListWidget>
 #include <QLineEdit>
 #include <QStackedWidget>
+
 #include <QSpinBox>
 #include <QComboBox>
 QT_BEGIN_NAMESPACE
@@ -29,6 +30,7 @@ public:
     ~MainWindow();
 
 private slots:
+    void envoyerEmailFormateur();
     void trierCours();
     void trierFormateurs();
     // ========================================
