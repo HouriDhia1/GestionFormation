@@ -25,6 +25,13 @@
 #include "src/pdfgenerator.h"
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QComboBox>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QPrinter>
+#include <QPageSize>
+#include <QPainter>
+#include <QFileDialog>
 // ============================================================
 // CONSTRUCTEUR
 // ============================================================
@@ -151,6 +158,7 @@ void MainWindow::setupUI()
     sidebar->addItem("📊  Tableau de bord");
     sidebar->addItem("👨‍🏫  Formateurs");
     sidebar->addItem("📚  Cours");
+    sidebar->addItem("📊  Dashboard Formateur");
     sidebar->addItem("⚙️  Paramètres");
     sidebar->addItem("🚪  Quitter");
 
@@ -719,6 +727,534 @@ void MainWindow::setupUI()
     connect(btnActualiserCours, &QPushButton::clicked, this, &MainWindow::actualiserCours);
 
     stackedWidget->addWidget(pageCours);
+    // ============================================================
+    // PAGE : DASHBOARD FORMATEUR
+    // ============================================================
+
+    QWidget *pageDashboardFormateur = new QWidget();
+    QVBoxLayout *layoutDashboardFormateur = new QVBoxLayout(pageDashboardFormateur);
+    layoutDashboardFormateur->setContentsMargins(30, 30, 30, 30);
+    layoutDashboardFormateur->setSpacing(20);
+
+    // Titre
+    QLabel *titreDashboardFormateur = new QLabel("📊 Tableau de bord du formateur");
+    titreDashboardFormateur->setStyleSheet("font-size: 28px; font-weight: 700; color: #1A2332;");
+    layoutDashboardFormateur->addWidget(titreDashboardFormateur);
+
+    // ========================================================
+    // SÉLECTION DU FORMATEUR
+    // ========================================================
+
+    QHBoxLayout *selectionLayout = new QHBoxLayout();
+    selectionLayout->setSpacing(15);
+
+    QLabel *labelSelectFormateur = new QLabel("👤 Sélectionner un formateur :");
+    labelSelectFormateur->setStyleSheet("font-size: 14px; font-weight: 600; color: #374151;");
+
+    QComboBox *comboFormateurDashboard = new QComboBox();
+    comboFormateurDashboard->setMinimumWidth(300);
+    comboFormateurDashboard->setStyleSheet(R"(
+    QComboBox {
+        padding: 10px 16px;
+        border: 2px solid #E5E7EB;
+        border-radius: 10px;
+        background: white;
+        font-size: 13px;
+        color: #1A2332;
+    }
+    QComboBox:hover {
+        border-color: #4F46E5;
+    }
+    QComboBox::drop-down {
+        border: none;
+    }
+)");
+
+    QPushButton *btnAfficherDashboard = creerBouton("📊 Afficher", "primary");
+    btnAfficherDashboard->setMinimumHeight(42);
+
+    QPushButton *btnPDFDashboard = creerBouton("📄 Exporter PDF", "primary");
+    btnPDFDashboard->setMinimumHeight(42);
+    btnPDFDashboard->setStyleSheet(btnPDFDashboard->styleSheet() +
+                                   "QPushButton { background-color: #7C3AED; }"
+                                   "QPushButton:hover { background-color: #6D28D9; }"
+                                   );
+
+    selectionLayout->addWidget(labelSelectFormateur);
+    selectionLayout->addWidget(comboFormateurDashboard);
+    selectionLayout->addWidget(btnAfficherDashboard);
+    selectionLayout->addWidget(btnPDFDashboard);
+    selectionLayout->addStretch();
+
+    layoutDashboardFormateur->addLayout(selectionLayout);
+
+    // ========================================================
+    // ZONE DE CONTENU (cachée au départ)
+    // ========================================================
+
+    QWidget *contenuDashboard = new QWidget();
+    QVBoxLayout *contenuLayout = new QVBoxLayout(contenuDashboard);
+    contenuLayout->setSpacing(15);
+    contenuDashboard->setVisible(false);  // Caché au départ
+
+    // ========================================================
+    // CARTES DE STATISTIQUES (4 cartes)
+    // ========================================================
+
+    QHBoxLayout *statsGrid = new QHBoxLayout();
+    statsGrid->setSpacing(15);
+
+    // Carte 1 : Total Cours
+    QFrame *cardTotal = new QFrame();
+    cardTotal->setStyleSheet(R"(
+    QFrame {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+            stop:0 #4F46E5, stop:1 #818CF8);
+        border-radius: 14px;
+        color: white;
+    }
+)");
+    cardTotal->setFixedHeight(100);
+    cardTotal->setMinimumWidth(180);
+
+    QVBoxLayout *cardTotalLayout = new QVBoxLayout(cardTotal);
+    cardTotalLayout->setContentsMargins(20, 12, 20, 12);
+    QLabel *cardTotalIcon = new QLabel("📚");
+    cardTotalIcon->setStyleSheet("font-size: 22px;");
+    QLabel *cardTotalLabel = new QLabel("Total Cours");
+    cardTotalLabel->setStyleSheet("font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8);");
+    QLabel *cardTotalValue = new QLabel("0");
+    cardTotalValue->setStyleSheet("font-size: 28px; font-weight: 700;");
+    cardTotalValue->setObjectName("cardTotalValue");
+    cardTotalLayout->addWidget(cardTotalIcon);
+    cardTotalLayout->addWidget(cardTotalLabel);
+    cardTotalLayout->addWidget(cardTotalValue);
+    statsGrid->addWidget(cardTotal);
+
+    // Carte 2 : Total Heures
+    QFrame *cardHeures = new QFrame();
+    cardHeures->setStyleSheet(R"(
+    QFrame {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+            stop:0 #0891B2, stop:1 #22D3EE);
+        border-radius: 14px;
+        color: white;
+    }
+)");
+    cardHeures->setFixedHeight(100);
+    cardHeures->setMinimumWidth(180);
+
+    QVBoxLayout *cardHeuresLayout = new QVBoxLayout(cardHeures);
+    cardHeuresLayout->setContentsMargins(20, 12, 20, 12);
+    QLabel *cardHeuresIcon = new QLabel("⏱️");
+    cardHeuresIcon->setStyleSheet("font-size: 22px;");
+    QLabel *cardHeuresLabel = new QLabel("Total Heures");
+    cardHeuresLabel->setStyleSheet("font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8);");
+    QLabel *cardHeuresValue = new QLabel("0");
+    cardHeuresValue->setStyleSheet("font-size: 28px; font-weight: 700;");
+    cardHeuresValue->setObjectName("cardHeuresValue");
+    cardHeuresLayout->addWidget(cardHeuresIcon);
+    cardHeuresLayout->addWidget(cardHeuresLabel);
+    cardHeuresLayout->addWidget(cardHeuresValue);
+    statsGrid->addWidget(cardHeures);
+
+    // Carte 3 : Cours Max Durée
+    QFrame *cardMax = new QFrame();
+    cardMax->setStyleSheet(R"(
+    QFrame {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+            stop:0 #059669, stop:1 #34D399);
+        border-radius: 14px;
+        color: white;
+    }
+)");
+    cardMax->setFixedHeight(100);
+    cardMax->setMinimumWidth(180);
+
+    QVBoxLayout *cardMaxLayout = new QVBoxLayout(cardMax);
+    cardMaxLayout->setContentsMargins(20, 12, 20, 12);
+    QLabel *cardMaxIcon = new QLabel("🏆");
+    cardMaxIcon->setStyleSheet("font-size: 22px;");
+    QLabel *cardMaxLabel = new QLabel("Cours le plus long");
+    cardMaxLabel->setStyleSheet("font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8);");
+    QLabel *cardMaxValue = new QLabel("0h");
+    cardMaxValue->setStyleSheet("font-size: 28px; font-weight: 700;");
+    cardMaxValue->setObjectName("cardMaxValue");
+    cardMaxLayout->addWidget(cardMaxIcon);
+    cardMaxLayout->addWidget(cardMaxLabel);
+    cardMaxLayout->addWidget(cardMaxValue);
+    statsGrid->addWidget(cardMax);
+
+    // Carte 4 : Moyenne
+    QFrame *cardMoyenne = new QFrame();
+    cardMoyenne->setStyleSheet(R"(
+    QFrame {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+            stop:0 #7C3AED, stop:1 #A78BFA);
+        border-radius: 14px;
+        color: white;
+    }
+)");
+    cardMoyenne->setFixedHeight(100);
+    cardMoyenne->setMinimumWidth(180);
+
+    QVBoxLayout *cardMoyenneLayout = new QVBoxLayout(cardMoyenne);
+    cardMoyenneLayout->setContentsMargins(20, 12, 20, 12);
+    QLabel *cardMoyenneIcon = new QLabel("📊");
+    cardMoyenneIcon->setStyleSheet("font-size: 22px;");
+    QLabel *cardMoyenneLabel = new QLabel("Durée moyenne");
+    cardMoyenneLabel->setStyleSheet("font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8);");
+    QLabel *cardMoyenneValue = new QLabel("0h");
+    cardMoyenneValue->setStyleSheet("font-size: 28px; font-weight: 700;");
+    cardMoyenneValue->setObjectName("cardMoyenneValue");
+    cardMoyenneLayout->addWidget(cardMoyenneIcon);
+    cardMoyenneLayout->addWidget(cardMoyenneLabel);
+    cardMoyenneLayout->addWidget(cardMoyenneValue);
+    statsGrid->addWidget(cardMoyenne);
+
+    statsGrid->addStretch();
+    contenuLayout->addLayout(statsGrid);
+
+    // ========================================================
+    // INFOS FORMATEUR + GRAPHIQUE
+    // ========================================================
+
+    QHBoxLayout *infoGraphLayout = new QHBoxLayout();
+    infoGraphLayout->setSpacing(20);
+
+    // Carte Informations
+    QFrame *cardInfo = new QFrame();
+    cardInfo->setStyleSheet(R"(
+    QFrame {
+        background-color: white;
+        border-radius: 14px;
+        border: 1px solid #E5E7EB;
+    }
+)");
+    cardInfo->setMinimumWidth(350);
+    cardInfo->setMaximumWidth(400);
+    cardInfo->setFixedHeight(200);
+
+    QVBoxLayout *cardInfoLayout = new QVBoxLayout(cardInfo);
+    cardInfoLayout->setContentsMargins(20, 18, 20, 18);
+    cardInfoLayout->setSpacing(8);
+
+    QLabel *infoNomPrenom = new QLabel("👤 Sélectionnez un formateur");
+    infoNomPrenom->setStyleSheet("font-size: 20px; font-weight: 700; color: #1A2332;");
+
+    QLabel *infoEmail = new QLabel("");
+    infoEmail->setStyleSheet("font-size: 13px; color: #6B7280;");
+
+    QLabel *infoSpecialite = new QLabel("");
+    infoSpecialite->setStyleSheet("font-size: 13px; color: #6B7280;");
+
+    QLabel *infoDateEmbauche = new QLabel("");
+    infoDateEmbauche->setStyleSheet("font-size: 13px; color: #6B7280;");
+
+    QLabel *infoTotalCours = new QLabel("");
+    infoTotalCours->setStyleSheet("font-size: 13px; font-weight: 600; color: #4F46E5;");
+
+    cardInfoLayout->addWidget(infoNomPrenom);
+    cardInfoLayout->addSpacing(5);
+    cardInfoLayout->addWidget(infoEmail);
+    cardInfoLayout->addWidget(infoSpecialite);
+    cardInfoLayout->addWidget(infoDateEmbauche);
+    cardInfoLayout->addWidget(infoTotalCours);
+    cardInfoLayout->addStretch();
+
+    infoGraphLayout->addWidget(cardInfo);
+
+    // Graphique
+    QChartView *dashboardChartViewFormateur = new QChartView();
+    dashboardChartViewFormateur->setRenderHint(QPainter::Antialiasing);
+    dashboardChartViewFormateur->setMinimumHeight(200);
+    dashboardChartViewFormateur->setStyleSheet("background-color: white; border-radius: 14px; border: 1px solid #E5E7EB;");
+    infoGraphLayout->addWidget(dashboardChartViewFormateur);
+
+    contenuLayout->addLayout(infoGraphLayout);
+
+    // ========================================================
+    // LISTE DES COURS
+    // ========================================================
+
+    QLabel *labelListeCours = new QLabel("📋 Liste des cours");
+    labelListeCours->setStyleSheet("font-size: 16px; font-weight: 700; color: #1A2332; margin-top: 5px;");
+    contenuLayout->addWidget(labelListeCours);
+
+    QTableView *tableCoursFormateur = new QTableView();
+    tableCoursFormateur->setStyleSheet(R"(
+    QTableView {
+        background-color: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 10px;
+        alternate-background-color: #F8FAFD;
+    }
+    QHeaderView::section {
+        background-color: #F7F9FC;
+        padding: 12px 10px;
+        border: none;
+        border-bottom: 1px solid #E5E7EB;
+        font-weight: 700;
+        color: #374151;
+    }
+    QTableView::item {
+        padding: 8px;
+    }
+)");
+    tableCoursFormateur->setAlternatingRowColors(true);
+    tableCoursFormateur->verticalHeader()->setVisible(false);
+    tableCoursFormateur->horizontalHeader()->setStretchLastSection(true);
+
+    QStandardItemModel *modelCoursFormateur = new QStandardItemModel(this);
+    modelCoursFormateur->setHorizontalHeaderLabels({"ID", "Titre", "Description", "Durée (h)"});
+    tableCoursFormateur->setModel(modelCoursFormateur);
+    tableCoursFormateur->setColumnWidth(0, 60);
+    tableCoursFormateur->setColumnWidth(1, 180);
+    tableCoursFormateur->setColumnWidth(2, 300);
+
+    contenuLayout->addWidget(tableCoursFormateur, 1);
+
+    layoutDashboardFormateur->addWidget(contenuDashboard);
+
+    stackedWidget->addWidget(pageDashboardFormateur);
+
+    // ============================================================
+    // REMPLIR LA LISTE DES FORMATEURS
+    // ============================================================
+
+    QList<Formateur> formateurs = FormateurDAO::readAll();
+    comboFormateurDashboard->addItem("-- Sélectionner un formateur --", 0);
+    for (const Formateur& f : formateurs) {
+        comboFormateurDashboard->addItem(f.getNom() + " " + f.getPrenom(), f.getId());
+    }
+
+    // ============================================================
+    // FONCTION POUR CHARGER LE DASHBOARD
+    // ============================================================
+
+    auto chargerDashboardFormateur = [comboFormateurDashboard, infoNomPrenom, infoEmail, infoSpecialite, infoDateEmbauche, infoTotalCours, cardTotalValue, cardHeuresValue, cardMaxValue, cardMoyenneValue, modelCoursFormateur, dashboardChartViewFormateur, contenuDashboard]() {
+        int idFormateur = comboFormateurDashboard->currentData().toInt();
+
+        if (idFormateur == 0) {
+            QMessageBox::warning(nullptr, "Erreur", "Veuillez sélectionner un formateur.");
+            contenuDashboard->setVisible(false);
+            return;
+        }
+
+        contenuDashboard->setVisible(true);
+
+        // Récupérer les informations du formateur
+        Formateur f = FormateurDAO::readById(idFormateur);
+
+        // Afficher les informations
+        infoNomPrenom->setText("👤 " + f.getPrenom() + " " + f.getNom());
+        infoEmail->setText("📧 " + f.getEmail());
+        infoSpecialite->setText("🎯 Spécialité : " + f.getSpecialite());
+        infoDateEmbauche->setText("📅 Date d'embauche : " + f.getDateEmbauche().toString("dd/MM/yyyy"));
+
+        // Récupérer les cours du formateur
+        QSqlQuery query;
+        query.prepare("SELECT id_cours, titre, description, duree_heures FROM COURS WHERE id_formateur = :id");
+        query.bindValue(":id", idFormateur);
+
+        modelCoursFormateur->removeRows(0, modelCoursFormateur->rowCount());
+
+        int totalCours = 0;
+        int totalHeures = 0;
+        int maxDuree = 0;
+        QList<int> durees;
+
+        if (query.exec()) {
+            while (query.next()) {
+                QList<QStandardItem*> row;
+                row.append(new QStandardItem(query.value("id_cours").toString()));
+                row.append(new QStandardItem(query.value("titre").toString()));
+                row.append(new QStandardItem(query.value("description").toString()));
+                row.append(new QStandardItem(query.value("duree_heures").toString()));
+
+                modelCoursFormateur->appendRow(row);
+                totalCours++;
+                int duree = query.value("duree_heures").toInt();
+                totalHeures += duree;
+                if (duree > maxDuree) maxDuree = duree;
+                durees.append(duree);
+            }
+        }
+
+        // Mettre à jour les cartes
+        cardTotalValue->setText(QString::number(totalCours));
+        cardHeuresValue->setText(QString::number(totalHeures) + "h");
+        cardMaxValue->setText(QString::number(maxDuree) + "h");
+        double moyenne = totalCours > 0 ? (double)totalHeures / totalCours : 0;
+        cardMoyenneValue->setText(QString::number(moyenne, 'f', 1) + "h");
+
+        infoTotalCours->setText("📚 " + QString::number(totalCours) + " cours | ⏱️ " + QString::number(totalHeures) + " heures totales");
+
+        // ========================================================
+        // GRAPHIQUE CAMEMBERT DES DURÉES
+        // ========================================================
+
+        QPieSeries *series = new QPieSeries();
+
+        // Compter les durées
+        QMap<int, int> dureeCount;
+        for (int d : durees) {
+            dureeCount[d]++;
+        }
+
+        for (auto it = dureeCount.begin(); it != dureeCount.end(); ++it) {
+            QPieSlice *slice = series->append(QString::number(it.key()) + "h (" + QString::number(it.value()) + ")", it.value());
+            slice->setLabelVisible(true);
+            slice->setLabelColor(Qt::black);
+            slice->setLabelPosition(QPieSlice::LabelInsideHorizontal);
+        }
+
+        QChart *chart = new QChart();
+        chart->addSeries(series);
+        chart->setTitle("📊 Répartition des durées des cours");
+        chart->setAnimationOptions(QChart::SeriesAnimations);
+        chart->legend()->setVisible(true);
+        chart->legend()->setAlignment(Qt::AlignRight);
+        chart->setTheme(QChart::ChartThemeLight);
+        chart->setBackgroundBrush(QBrush(Qt::white));
+        chart->setBackgroundRoundness(10);
+        dashboardChartViewFormateur->setChart(chart);
+    };
+
+    // ============================================================
+    // CONNEXION DU BOUTON AFFICHER
+    // ============================================================
+
+    connect(btnAfficherDashboard, &QPushButton::clicked, chargerDashboardFormateur);
+
+    // ============================================================
+    // CONNEXION DU BOUTON PDF
+    // ============================================================
+
+    connect(btnPDFDashboard, &QPushButton::clicked, [comboFormateurDashboard]() {
+        int idFormateur = comboFormateurDashboard->currentData().toInt();
+
+        if (idFormateur == 0) {
+            QMessageBox::warning(nullptr, "Erreur", "Veuillez sélectionner un formateur.");
+            return;
+        }
+
+        Formateur f = FormateurDAO::readById(idFormateur);
+
+        // Créer un PDF du dashboard
+        QString chemin = QFileDialog::getSaveFileName(
+            nullptr,
+            "Enregistrer le PDF du dashboard",
+            QDir::homePath() + "/dashboard_" + f.getNom() + "_" + f.getPrenom() + ".pdf",
+            "PDF Files (*.pdf)"
+            );
+
+        if (!chemin.isEmpty()) {
+            QPrinter printer(QPrinter::PrinterResolution);
+            printer.setOutputFormat(QPrinter::PdfFormat);
+            printer.setOutputFileName(chemin);
+            printer.setPageSize(QPageSize(QPageSize::A4));
+            printer.setPageMargins(QMarginsF(20, 20, 20, 20));
+
+            QPainter painter(&printer);
+            if (painter.isActive()) {
+                // Récupérer les données
+                QSqlQuery query;
+                query.prepare("SELECT id_cours, titre, description, duree_heures FROM COURS WHERE id_formateur = :id");
+                query.bindValue(":id", idFormateur);
+
+                int totalCours = 0;
+                int totalHeures = 0;
+                QList<QStringList> rows;
+
+                if (query.exec()) {
+                    while (query.next()) {
+                        QStringList row;
+                        row << query.value("id_cours").toString()
+                            << query.value("titre").toString()
+                            << query.value("description").toString()
+                            << query.value("duree_heures").toString() + "h";
+                        rows.append(row);
+                        totalCours++;
+                        totalHeures += query.value("duree_heures").toInt();
+                    }
+                }
+
+                // En-tête
+                QFont titleFont("Arial", 18, QFont::Bold);
+                QFont subTitleFont("Arial", 12);
+                QFont tableHeaderFont("Arial", 10, QFont::Bold);
+                QFont tableFont("Arial", 9);
+
+                int y = 20;
+
+                painter.setFont(titleFont);
+                painter.drawText(0, y, 300, 40, Qt::AlignLeft, "📊 Dashboard Formateur");
+
+                painter.setFont(subTitleFont);
+                y += 30;
+                painter.drawText(0, y, 200, 25, Qt::AlignLeft, "Formateur : " + f.getPrenom() + " " + f.getNom());
+                y += 22;
+                painter.drawText(0, y, 200, 25, Qt::AlignLeft, "Email : " + f.getEmail());
+                y += 22;
+                painter.drawText(0, y, 200, 25, Qt::AlignLeft, "Spécialité : " + f.getSpecialite());
+                y += 22;
+                painter.drawText(0, y, 200, 25, Qt::AlignLeft, "Date d'embauche : " + f.getDateEmbauche().toString("dd/MM/yyyy"));
+
+                y += 30;
+                painter.setFont(QFont("Arial", 12, QFont::Bold));
+                painter.drawText(0, y, 200, 25, Qt::AlignLeft, "📊 Statistiques");
+                y += 25;
+                painter.setFont(QFont("Arial", 10));
+                painter.drawText(0, y, 200, 25, Qt::AlignLeft, "Total cours : " + QString::number(totalCours));
+                painter.drawText(200, y, 200, 25, Qt::AlignLeft, "Total heures : " + QString::number(totalHeures) + "h");
+
+                y += 30;
+                painter.setFont(tableHeaderFont);
+                painter.setPen(QPen(Qt::black, 1));
+                painter.drawLine(0, y, printer.width() - 20, y);
+
+                int x0 = 10;
+                int col1 = 30;
+                int col2 = 120;
+                int col3 = 180;
+                int col4 = 50;
+
+                y += 25;
+                painter.drawText(x0, y, col1, 25, Qt::AlignLeft, "ID");
+                painter.drawText(x0 + col1, y, col2, 25, Qt::AlignLeft, "Titre");
+                painter.drawText(x0 + col1 + col2, y, col3, 25, Qt::AlignLeft, "Description");
+                painter.drawText(x0 + col1 + col2 + col3, y, col4, 25, Qt::AlignLeft, "Durée");
+
+                y += 25;
+                painter.drawLine(0, y, printer.width() - 20, y);
+
+                painter.setFont(tableFont);
+                int rowHeight = 22;
+
+                for (const QStringList& row : rows) {
+                    y += rowHeight;
+                    painter.drawText(x0, y, col1, rowHeight, Qt::AlignLeft, row[0]);
+                    painter.drawText(x0 + col1, y, col2, rowHeight, Qt::AlignLeft, row[1]);
+                    painter.drawText(x0 + col1 + col2, y, col3, rowHeight, Qt::AlignLeft, row[2]);
+                    painter.drawText(x0 + col1 + col2 + col3, y, col4, rowHeight, Qt::AlignLeft, row[3]);
+
+                    if (y > printer.height() - 50) {
+                        printer.newPage();
+                        y = 20;
+                        painter.drawLine(0, y, printer.width() - 20, y);
+                    }
+                }
+
+                painter.end();
+
+                QMessageBox::information(nullptr, "Succès", "✅ PDF du dashboard généré avec succès !\n" + chemin);
+            } else {
+                QMessageBox::critical(nullptr, "Erreur", "❌ Erreur lors de la génération du PDF.");
+            }
+        }
+    });
+
     // ============================================================
     // PAGE 4 : PARAMÈTRES
     // ============================================================
