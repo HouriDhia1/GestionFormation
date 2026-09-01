@@ -23,6 +23,11 @@ public:
 
     // 📋 AUTRES MÉTHODES
     static QList<Cours> getCoursByFormateur(int idFormateur);
+    // Dashboard Cours
+    static QMap<QString, QVariant> getCoursDetails(int idCours);
+    static QList<Cours> getAutresCoursByFormateur(int idFormateur, int idCoursExclu);
+    static int getTotalCoursByFormateur(int idFormateur);
+    static int getTotalHeuresByFormateur(int idFormateur);
 };
 
 #endif // COURSDAO_H

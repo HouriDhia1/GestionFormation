@@ -178,3 +178,84 @@ QString CoursDAO::getFichierAttache(int idCours)
     }
     return "";
 }
+// ============================================================
+// DASHBOARD COURS
+// ============================================================
+
+QMap<QString, QVariant> CoursDAO::getCoursDetails(int idCours)
+{
+    QMap<QString, QVariant> details;
+
+    QSqlQuery query;
+    query.prepare(R"(
+        SELECT c.id_cours, c.titre, c.description, c.duree_heures,
+               f.id_formateur, f.nom, f.prenom, f.email, f.specialite
+        FROM COURS c
+        JOIN FORMATEUR f ON c.id_formateur = f.id_formateur
+        WHERE c.id_cours = :id
+    )");
+    query.bindValue(":id", idCours);
+
+    if (query.exec() && query.next()) {
+        details["id_cours"] = query.value("id_cours").toInt();
+        details["titre"] = query.value("titre").toString();
+        details["description"] = query.value("description").toString();
+        details["duree_heures"] = query.value("duree_heures").toInt();
+        details["id_formateur"] = query.value("id_formateur").toInt();
+        details["nom_formateur"] = query.value("nom").toString();
+        details["prenom_formateur"] = query.value("prenom").toString();
+        details["email_formateur"] = query.value("email").toString();
+        details["specialite_formateur"] = query.value("specialite").toString();
+    }
+
+    return details;
+}
+
+QList<Cours> CoursDAO::getAutresCoursByFormateur(int idFormateur, int idCoursExclu)
+{
+    QList<Cours> coursList;
+
+    QSqlQuery query;
+    query.prepare("SELECT * FROM COURS WHERE id_formateur = :id AND id_cours != :exclu ORDER BY id_cours");
+    query.bindValue(":id", idFormateur);
+    query.bindValue(":exclu", idCoursExclu);
+
+    if (query.exec()) {
+        while (query.next()) {
+            Cours c(
+                query.value("id_cours").toInt(),
+                query.value("titre").toString(),
+                query.value("description").toString(),
+                query.value("duree_heures").toInt(),
+                query.value("id_formateur").toInt()
+                );
+            coursList.append(c);
+        }
+    }
+
+    return coursList;
+}
+
+int CoursDAO::getTotalCoursByFormateur(int idFormateur)
+{
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM COURS WHERE id_formateur = :id");
+    query.bindValue(":id", idFormateur);
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    return 0;
+}
+
+int CoursDAO::getTotalHeuresByFormateur(int idFormateur)
+{
+    QSqlQuery query;
+    query.prepare("SELECT SUM(duree_heures) FROM COURS WHERE id_formateur = :id");
+    query.bindValue(":id", idFormateur);
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    return 0;
+}

@@ -16,6 +16,10 @@
 #include <QStackedWidget>
 #include <QSpinBox>
 #include <QComboBox>
+#include <QtCharts/QChartView>
+#include <QtCharts/QPieSeries>
+#include <QtCharts/QPieSlice>
+#include <QtCharts/QChart>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -74,10 +78,16 @@ private slots:
     // MÉTIER 4 : ATTACHER UN FICHIER (COURS)
     // ========================================
     void attacherFichier();
-    void ouvrirDocCours();  // ⬅️ RENOMMÉ
+    void ouvrirDocCours();
+
+    // ========================================
+    // DASHBOARD COURS (MÉTIER 5)
+    // ========================================
+    void afficherDashboardCours();
+    void exporterPDFDashboardCours();
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow *ui;   // ⬅️ ESSENTIEL !!!
 
     // Sidebar
     QListWidget *sidebar;
@@ -88,6 +98,28 @@ private:
     QLabel *dashboardTotalCours;
     QLabel *dashboardStatus;
     QLabel *dashboardSpecialites;
+
+    // ========================================
+    // DASHBOARD COURS (MÉTIER 5)
+    // ========================================
+    QComboBox *comboDashboardCours;
+    QPushButton *btnAfficherDashboardCours;
+    QPushButton *btnPDFDashboardCours;
+    QWidget *contenuDashboardCours;
+    QLabel *labelCoursTitre;
+    QLabel *labelCoursDescription;
+    QLabel *labelCoursDuree;
+    QLabel *labelCoursFormateur;
+    QLabel *labelCoursStatistiques;
+    QTableView *tableAutresCours;
+    QStandardItemModel *modelAutresCours;
+    QChartView *chartViewDashboardCours;
+
+    // Cartes Dashboard Cours
+    QLabel *cardCoursTotalValue;
+    QLabel *cardCoursDureeValue;
+    QLabel *cardCoursMaxValue;
+    QLabel *cardCoursMoyenneValue;
 
     // ========================================
     // ONGLET FORMATEURS
@@ -139,7 +171,7 @@ private:
     // MÉTIER 4 : ATTACHER UN FICHIER (COURS)
     // ========================================
     QPushButton *btnAttacherFichier;
-    QPushButton *btnOuvrirDocCours;  // ⬅️ RENOMMÉ
+    QPushButton *btnOuvrirDocCours;
 
     // ========================================
     // MÉTHODES
