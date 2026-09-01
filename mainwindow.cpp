@@ -12,6 +12,7 @@
 #include <QDebug>
 #include <QHeaderView>
 #include <QPalette>
+
 #include <QFont>
 #include <QAbstractItemView>
 #include <QGraphicsDropShadowEffect>
@@ -32,6 +33,11 @@
 #include <QPageSize>
 #include <QPainter>
 #include <QFileDialog>
+#include <QFileDialog>
+#include <QDesktopServices>
+#include <QDir>
+#include <QStandardPaths>
+
 // ============================================================
 // CONSTRUCTEUR
 // ============================================================
@@ -681,7 +687,9 @@ void MainWindow::setupUI()
     layoutCours->addWidget(tableCours, 1);
 
     // ========================================================
-    // BOUTONS COURS (Ajouter, Modifier, Supprimer, PDF, Actualiser)
+    // ========================================================
+    // ========================================================
+    // BOUTONS COURS
     // ========================================================
 
     QHBoxLayout *buttonsCours = new QHBoxLayout();
@@ -692,7 +700,7 @@ void MainWindow::setupUI()
     btnSupprimerCours = creerBouton("⌫  Supprimer", "danger");
     btnActualiserCours = creerBouton("↻  Actualiser", "secondary");
 
-    // ✅ Bouton PDF Cours
+    // ✅ Bouton PDF (UNIQUEMENT UNE FOIS)
     QPushButton *btnPDFCours = creerBouton("📄 Exporter PDF", "primary");
     connect(btnPDFCours, &QPushButton::clicked, this, [this]() {
         QString chemin = QFileDialog::getSaveFileName(
@@ -701,16 +709,32 @@ void MainWindow::setupUI()
             QDir::homePath() + "/cours.pdf",
             "PDF Files (*.pdf)"
             );
-
         if (!chemin.isEmpty()) {
             QList<Cours> cours = CoursDAO::readAll();
             if (PDFGenerator::genererPDFCours(cours, chemin)) {
-                QMessageBox::information(this, "Succès", "✅ PDF généré avec succès !\n" + chemin);
-            } else {
-                QMessageBox::critical(this, "Erreur", "❌ Erreur lors de la génération du PDF.");
+                QMessageBox::information(this, "Succès", "✅ PDF généré !");
             }
         }
     });
+
+    // ✅ Bouton Attacher un fichier (Métier 4)
+    btnAttacherFichier = creerBouton("📎 Attacher un fichier", "primary");
+    connect(btnAttacherFichier, &QPushButton::clicked, this, &MainWindow::attacherFichier);
+
+    // ✅ Bouton Ouvrir le document (Métier 4)
+    btnOuvrirDocCours = creerBouton("📂 Ouvrir le document", "primary");
+    connect(btnOuvrirDocCours, &QPushButton::clicked, this, &MainWindow::ouvrirDocCours);
+
+    buttonsCours->addWidget(btnAjouterCours);
+    buttonsCours->addWidget(btnModifierCours);
+    buttonsCours->addWidget(btnSupprimerCours);
+    buttonsCours->addStretch();
+    buttonsCours->addWidget(btnPDFCours);
+    buttonsCours->addWidget(btnAttacherFichier);
+    buttonsCours->addWidget(btnOuvrirDocCours);
+    buttonsCours->addWidget(btnActualiserCours);
+
+    layoutCours->addLayout(buttonsCours);
 
     buttonsCours->addWidget(btnAjouterCours);
     buttonsCours->addWidget(btnModifierCours);
@@ -1514,11 +1538,12 @@ void MainWindow::chargerCours()
 
     modelCours->removeRows(0, modelCours->rowCount());
 
-    // ✅ Requête avec JOIN pour récupérer le nom du formateur
+    // ✅ Requête avec JOIN pour récupérer le nom du formateur ET le fichier attaché
     QSqlQuery query;
     query.prepare(R"(
         SELECT c.id_cours, c.titre, c.description, c.duree_heures,
-               f.nom || ' ' || f.prenom AS formateur_nom
+               f.nom || ' ' || f.prenom AS formateur_nom,
+               c.fichier_attache
         FROM COURS c
         JOIN FORMATEUR f ON c.id_formateur = f.id_formateur
         ORDER BY c.id_cours
@@ -1543,8 +1568,15 @@ void MainWindow::chargerCours()
         dureeItem->setTextAlignment(Qt::AlignCenter);
         row.append(dureeItem);
 
-        // ✅ Nom + Prénom du formateur (au lieu de son ID)
+        // ✅ Nom + Prénom du formateur
         row.append(new QStandardItem(query.value("formateur_nom").toString()));
+
+        // ✅ Afficher l'icône 📎 si un fichier est attaché
+        QString fichier = query.value("fichier_attache").toString();
+        QStandardItem *fichierItem = new QStandardItem(fichier.isEmpty() ? "" : "📎");
+        fichierItem->setTextAlignment(Qt::AlignCenter);
+        fichierItem->setToolTip(fichier.isEmpty() ? "Aucun fichier attaché" : fichier);
+        row.append(fichierItem);
 
         modelCours->appendRow(row);
         totalCours++;
@@ -2006,4 +2038,103 @@ void MainWindow::envoyerEmailFormateur()
 
     QMessageBox::information(this, "Email",
                              "✅ Ouverture du client mail pour :\n" + email);
+}
+// ============================================================
+// MÉTIER 4 : ATTACHER UN FICHIER À UN COURS
+// ============================================================
+
+void MainWindow::attacherFichier()
+{
+    // 1. Vérifier qu'un cours est sélectionné
+    QModelIndexList selection = tableCours->selectionModel()->selectedRows();
+    if (selection.isEmpty()) {
+        QMessageBox::warning(this, "Sélection", "Veuillez sélectionner un cours.");
+        return;
+    }
+
+    int row = selection.first().row();
+    int id = modelCours->item(row, 0)->text().toInt();
+    QString titre = modelCours->item(row, 1)->text();
+
+    // 2. Ouvrir la boîte de dialogue pour choisir un fichier
+    QString chemin = QFileDialog::getOpenFileName(
+        this,
+        "Attacher un fichier au cours : " + titre,
+        QDir::homePath(),
+        "Tous les fichiers (*.*)"
+        );
+
+    if (chemin.isEmpty()) {
+        return;
+    }
+
+    // 3. Vérifier la taille du fichier (max 10 MB)
+    QFileInfo fileInfo(chemin);
+    if (fileInfo.size() > 10 * 1024 * 1024) {
+        QMessageBox::warning(this, "Erreur", "Le fichier est trop volumineux (max 10 MB).");
+        return;
+    }
+
+    // 4. Créer le dossier "documents" s'il n'existe pas
+    QDir dir;
+    if (!dir.exists("documents")) {
+        dir.mkdir("documents");
+    }
+
+    // 5. Copier le fichier dans le dossier "documents"
+    QString nouveauNom = QString("cours_%1_%2").arg(id).arg(fileInfo.fileName());
+    QString nouveauChemin = QDir::currentPath() + "/documents/" + nouveauNom;
+
+    if (QFile::exists(nouveauChemin)) {
+        QFile::remove(nouveauChemin);
+    }
+
+    if (!QFile::copy(chemin, nouveauChemin)) {
+        QMessageBox::critical(this, "Erreur", "Impossible de copier le fichier.");
+        return;
+    }
+
+    // 6. Enregistrer le chemin dans la base de données
+    if (CoursDAO::attacherFichier(id, nouveauChemin)) {
+        QMessageBox::information(this, "Succès", "✅ Fichier attaché avec succès !");
+        chargerCours();
+    } else {
+        QMessageBox::critical(this, "Erreur", "❌ Erreur lors de l'enregistrement en base.");
+    }
+}
+
+// ============================================================
+// MÉTIER 4 : OUVRIR LE FICHIER ATTACHÉ À UN COURS
+// ============================================================
+
+void MainWindow::ouvrirDocCours()
+{
+    // 1. Vérifier qu'un cours est sélectionné
+    QModelIndexList selection = tableCours->selectionModel()->selectedRows();
+    if (selection.isEmpty()) {
+        QMessageBox::warning(this, "Sélection", "Veuillez sélectionner un cours.");
+        return;
+    }
+
+    int row = selection.first().row();
+    int id = modelCours->item(row, 0)->text().toInt();
+
+    // 2. Récupérer le chemin du fichier attaché
+    QString chemin = CoursDAO::getFichierAttache(id);
+
+    if (chemin.isEmpty()) {
+        QMessageBox::information(this, "Information", "Aucun fichier n'est attaché à ce cours.");
+        return;
+    }
+
+    // 3. Vérifier que le fichier existe
+    if (!QFile::exists(chemin)) {
+        QMessageBox::warning(this, "Erreur", "Le fichier n'existe plus sur le disque.");
+        return;
+    }
+
+    // 4. Ouvrir le fichier avec l'application par défaut
+    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(chemin))) {
+        QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier.");
+    }
 }

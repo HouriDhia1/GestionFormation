@@ -3,6 +3,13 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
+bool CoursDAO::attacherFichier(int idCours, const QString& cheminFichier) {
+    QSqlQuery query;
+    query.prepare("UPDATE COURS SET fichier_attache = :chemin WHERE id_cours = :id");
+    query.bindValue(":chemin", cheminFichier);
+    query.bindValue(":id", idCours);
+    return query.exec();
+}
 
 bool CoursDAO::titreExiste(const QString& titre, int idCoursExclu)
 {
@@ -155,4 +162,19 @@ QList<Cours> CoursDAO::search(const QString& titre, const QString& description, 
     }
 
     return resultats;
+}
+// ============================================================
+// RÉCUPÉRER LE CHEMIN DU FICHIER ATTACHÉ
+// ============================================================
+
+QString CoursDAO::getFichierAttache(int idCours)
+{
+    QSqlQuery query;
+    query.prepare("SELECT fichier_attache FROM COURS WHERE id_cours = :id");
+    query.bindValue(":id", idCours);
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toString();
+    }
+    return "";
 }

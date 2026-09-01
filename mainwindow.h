@@ -14,9 +14,9 @@
 #include <QListWidget>
 #include <QLineEdit>
 #include <QStackedWidget>
-
 #include <QSpinBox>
 #include <QComboBox>
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -30,9 +30,6 @@ public:
     ~MainWindow();
 
 private slots:
-    void envoyerEmailFormateur();
-    void trierCours();
-    void trierFormateurs();
     // ========================================
     // NAVIGATION
     // ========================================
@@ -45,6 +42,7 @@ private slots:
     void modifierFormateur();
     void supprimerFormateur();
     void actualiserFormateurs();
+    void envoyerEmailFormateur();
 
     // ========================================
     // COURS
@@ -66,24 +64,31 @@ private slots:
     void rechercherCours();
     void reinitialiserRechercheCours();
 
+    // ========================================
+    // TRI
+    // ========================================
+    void trierFormateurs();
+    void trierCours();
+
+    // ========================================
+    // MÉTIER 4 : ATTACHER UN FICHIER (COURS)
+    // ========================================
+    void attacherFichier();
+    void ouvrirDocCours();  // ⬅️ RENOMMÉ
+
 private:
+    Ui::MainWindow *ui;
+
+    // Sidebar
+    QListWidget *sidebar;
+    QStackedWidget *stackedWidget;
+
     // Dashboard
     QLabel *dashboardTotalFormateurs;
     QLabel *dashboardTotalCours;
     QLabel *dashboardStatus;
     QLabel *dashboardSpecialites;
 
-    Ui::MainWindow *ui;
-
-    // Sidebar
-    QListWidget *sidebar;
-    QStackedWidget *stackedWidget;
-    // Tri Formateurs
-    QComboBox *comboTriFormateurs;
-    QPushButton *btnTrierFormateurs;
-    // Tri Cours
-    QComboBox *comboTriCours;
-    QPushButton *btnTrierCours;
     // ========================================
     // ONGLET FORMATEURS
     // ========================================
@@ -103,6 +108,10 @@ private:
     QPushButton *btnRechercher;
     QPushButton *btnReinitialiser;
 
+    // Tri Formateurs
+    QComboBox *comboTriFormateurs;
+    QPushButton *btnTrierFormateurs;
+
     // ========================================
     // ONGLET COURS
     // ========================================
@@ -121,6 +130,16 @@ private:
     QSpinBox *spinDuree;
     QPushButton *btnRechercherCours;
     QPushButton *btnReinitialiserCours;
+
+    // Tri Cours
+    QComboBox *comboTriCours;
+    QPushButton *btnTrierCours;
+
+    // ========================================
+    // MÉTIER 4 : ATTACHER UN FICHIER (COURS)
+    // ========================================
+    QPushButton *btnAttacherFichier;
+    QPushButton *btnOuvrirDocCours;  // ⬅️ RENOMMÉ
 
     // ========================================
     // MÉTHODES

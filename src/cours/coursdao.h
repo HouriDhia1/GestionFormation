@@ -14,8 +14,14 @@ public:
     static Cours readById(int id);
     static bool titreExiste(const QString& titre, int idCoursExclu = -1);
 
-    // 🔍 RECHERCHE MULTICRITÈRES (UNE SEULE FOIS !)
-static QList<Cours> search(const QString& titre, const QString& description, int duree);
+    // 📎 GESTION DES FICHIERS ATTACHÉS
+    static bool attacherFichier(int idCours, const QString& cheminFichier);
+    static QString getFichierAttache(int idCours);
+
+    // 🔍 RECHERCHE MULTICRITÈRES
+    static QList<Cours> search(const QString& titre, const QString& description, int duree);
+
+    // 📋 AUTRES MÉTHODES
     static QList<Cours> getCoursByFormateur(int idFormateur);
 };
 
